@@ -96,8 +96,10 @@ input int      ReceiveTimeout    = 10000;
 input bool     LogDetailed       = true;
 input bool     EnableWebMonitor  = true;
 input string   WebMonitorUrl     = "https://fx.haziroglu.com/api/client.php";
+input string   DashboardUrl      = "https://fx.haziroglu.com";
 input string   ClientToken       = "CLIENT_SECRET_TOKEN_123";
 input int      SyncInterval      = 500;
+input bool     AutoFetchToken    = true;
 
 //+------------------------------------------------------------------+
 //| GLOBAL VARIABLES                                                 |
@@ -128,6 +130,17 @@ int OnInit() {
    g_lang = GetLanguage(g_language);
    
    Print(g_lang.msg_starting);
+
+   // Token'ı Dashboard'dan al
+   if(AutoFetchToken && EnableWebMonitor) {
+      string fetchedToken = FetchClientTokenFromDashboard();
+      if(fetchedToken != "") {
+         ClientToken = fetchedToken;
+         Print("Client token fetched from Dashboard: ", ClientToken);
+      } else {
+         Print("WARNING: Could not fetch token from Dashboard, using default");
+      }
+   }
 
    g_magicNumber = (int)(AccountInfoInteger(ACCOUNT_LOGIN) % 1000000) * 10 + 5;
    g_trade.SetExpertMagicNumber(g_magicNumber);
@@ -647,6 +660,45 @@ double ExtractJsonNumber(string json, string key) {
    
    string numStr = StringSubstr(json, startPos, endPos - startPos);
    return StringToDouble(numStr);
+}
+
+//+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
+//| FETCH CLIENT TOKEN FROM DASHBOARD                                |
+//+------------------------------------------------------------------+
+string FetchClientTokenFromDashboard() {
+   string tokenUrl = DashboardUrl + "/admin/tokens.php?action=list&type=client";
+   
+   char data[];
+   char result[];
+   string resultHeaders;
+   
+   int res = WebRequest("GET", tokenUrl, "", 5000, data, result, resultHeaders);
+   
+   if(res != 200) {
+      Print("Failed to fetch token from Dashboard. Code: ", res);
+      return "";
+   }
+   
+   string response = CharArrayToString(result);
+   
+   // JSON'dan ilk client'ın tokenını al
+   int startPos = StringFind(response, "\"auth_token\":\"");
+   if(startPos == -1) {
+      Print("Token not found in Dashboard response");
+      return "";
+   }
+   
+   startPos += 14; // "auth_token":" uzunluğu
+   int endPos = StringFind(response, "\"", startPos);
+   
+   if(endPos == -1) {
+      Print("Token parsing failed");
+      return "";
+   }
+   
+   string token = StringSubstr(response, startPos, endPos - startPos);
+   return token;
 }
 
 //+------------------------------------------------------------------+

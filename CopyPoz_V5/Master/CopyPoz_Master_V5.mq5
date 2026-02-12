@@ -184,8 +184,10 @@ input int      BroadcastInterval = 500;
 input bool     LogDetailed       = true;
 input bool     EnableWebMonitor  = true;
 input string   WebMonitorUrl     = "https://fx.haziroglu.com/api/signal.php";
+input string   DashboardUrl      = "https://fx.haziroglu.com";
 input string   MasterToken       = "MASTER_SECRET_TOKEN_123";
 input int      ConnectionTimeout = 60000;
+input bool     AutoFetchToken    = true;
 
 //+------------------------------------------------------------------+
 //| GLOBAL VARIABLES                                                 |
@@ -217,6 +219,17 @@ int OnInit() {
    g_lang = GetLanguage(g_language);
    
    Print(g_lang.msg_starting);
+
+   // Token'ı Dashboard'dan al
+   if(AutoFetchToken && EnableWebMonitor) {
+      string fetchedToken = FetchMasterTokenFromDashboard();
+      if(fetchedToken != "") {
+         MasterToken = fetchedToken;
+         Print("Master token fetched from Dashboard: ", MasterToken);
+      } else {
+         Print("WARNING: Could not fetch token from Dashboard, using default");
+      }
+   }
 
    g_license = ValidateLicense(LicenseKey);
    
@@ -717,3 +730,32 @@ string ExtractJsonString(string json, string key) {
 }
 
 //+------------------------------------------------------------------+
+//| FETCH MASTER TOKEN FROM DASHBOARD                                |
+//+------------------------------------------------------------------+
+string FetchMasterTokenFromDashboard() {
+   string tokenUrl = DashboardUrl + "/admin/tokens.php?action=get&id=1&type=master";
+   
+   char data[];
+   char result[];
+   string resultHeaders;
+   
+   int res = WebRequest("GET", tokenUrl, "", 5000, data, result, resultHeaders);
+   
+   if(res != 200) {
+      Print("Failed to fetch token from Dashboard. Code: ", res);
+      return "";
+   }
+   
+   string response = CharArrayToString(result);
+   string token = ExtractJsonString(response, "token");
+   
+   if(token == "") {
+      Print("Token not found in Dashboard response");
+      return "";
+   }
+   
+   return token;
+}
+
+//+------------------------------------------------------------------+
+

@@ -80,9 +80,15 @@ BroadcastInterval: 500         (Yayın Aralığı: 500ms)
 LogDetailed: true              (Detaylı Log: Açık)
 EnableWebMonitor: true         (Web API: Açık)
 WebMonitorUrl: https://fx.haziroglu.com/api/signal.php
+DashboardUrl: https://fx.haziroglu.com
 MasterToken: MASTER_SECRET_TOKEN_123
 ConnectionTimeout: 60000       (Timeout: 60 saniye)
+AutoFetchToken: true           (Dashboard'dan Token Al: Açık)
 ```
+
+**Token Alma**:
+- `AutoFetchToken: true` ise, EA otomatik olarak Dashboard'dan token alır
+- `AutoFetchToken: false` ise, `MasterToken` parametresini elle gir
 
 ### 1.7 Master EA'yı Başlat
 
@@ -167,9 +173,15 @@ ReceiveTimeout: 10000          (Timeout: 10 saniye)
 LogDetailed: true              (Detaylı Log: Açık)
 EnableWebMonitor: true         (Web API: Açık)
 WebMonitorUrl: https://fx.haziroglu.com/api/client.php
+DashboardUrl: https://fx.haziroglu.com
 ClientToken: CLIENT_SECRET_TOKEN_123
 SyncInterval: 500              (Senkronizasyon: 500ms)
+AutoFetchToken: true           (Dashboard'dan Token Al: Açık)
 ```
+
+**Token Alma**:
+- `AutoFetchToken: true` ise, EA otomatik olarak Dashboard'dan token alır
+- `AutoFetchToken: false` ise, `ClientToken` parametresini elle gir
 
 **ÖNEMLİ**: MasterAddress'i doğru ayarla!
 - **Aynı bilgisayar**: `127.0.0.1:2000`
@@ -207,12 +219,14 @@ Dashboard/
 │   ├── client-command.php
 │   └── clients.php
 ├── admin/
+│   ├── tokens.php              (YENİ - Token Yönetimi)
 │   ├── licenses.php
 │   ├── users.php
 │   ├── clients.php
 │   └── ...
 ├── config/
 │   └── db.php
+├── tokens-management.php       (YENİ - Token UI)
 └── dashboard-v5.php
 ```
 
@@ -238,6 +252,21 @@ Dashboard/
 3. SQL dosyasını çalıştır:
 
 ```sql
+-- Master Terminalleri Tablosu (YENİ)
+CREATE TABLE masters (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    master_name VARCHAR(100) NOT NULL,
+    account_number BIGINT NOT NULL UNIQUE,
+    account_name VARCHAR(100),
+    token VARCHAR(64) NOT NULL UNIQUE,
+    token_type ENUM('MASTER_TOKEN', 'ADMIN_TOKEN') DEFAULT 'MASTER_TOKEN',
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    last_seen TIMESTAMP NULL,
+    total_positions INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 -- Master State Tablosu
 CREATE TABLE master_state (
     id INT PRIMARY KEY DEFAULT 1,
@@ -245,18 +274,21 @@ CREATE TABLE master_state (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Clients Tablosu
+-- Clients Tablosu (Güncellenmiş)
 CREATE TABLE clients (
     id INT AUTO_INCREMENT PRIMARY KEY,
     account_number BIGINT UNIQUE,
-    name VARCHAR(100),
+    account_name VARCHAR(100),
+    auth_token VARCHAR(255),
+    token_type ENUM('CLIENT_TOKEN', 'TRADER_TOKEN') DEFAULT 'CLIENT_TOKEN',
+    master_id INT NULL,
     status VARCHAR(20) DEFAULT 'active',
     balance DECIMAL(15,2),
     equity DECIMAL(15,2),
-    positions_count INT DEFAULT 0,
-    auth_token VARCHAR(255),
-    registration_token VARCHAR(255),
-    last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    open_positions INT DEFAULT 0,
+    last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (master_id) REFERENCES masters(id) ON DELETE SET NULL
 );
 
 -- Command Queue Tablosu
@@ -278,6 +310,23 @@ CREATE TABLE users (
     role VARCHAR(20) DEFAULT 'trader',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Token Yönetim Günlüğü (YENİ)
+CREATE TABLE token_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    token_type VARCHAR(50) NOT NULL,
+    token_value VARCHAR(64) NOT NULL,
+    action VARCHAR(50) NOT NULL,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- İndeksler
+CREATE INDEX idx_masters_token ON masters(token);
+CREATE INDEX idx_masters_status ON masters(status);
+CREATE INDEX idx_clients_token_type ON clients(token_type);
+CREATE INDEX idx_token_logs_token ON token_logs(token_value);
 ```
 
 ### 3.4 config/db.php Dosyasını Ayarla
@@ -300,7 +349,33 @@ try {
 ?>
 ```
 
-### 3.5 Environment Variables Ayarla
+### 3.5 Token Yönetim Sayfasına Erişim
+
+**URL**: 
+```
+https://fx.haziroglu.com/Dashboard/tokens-management.php
+```
+
+**Adımlar**:
+1. Dashboard'a admin olarak giriş yap
+2. Token Yönetimi sayfasına git
+3. Master Token oluştur:
+   - Master Adı: Master-1
+   - Hesap Numarası: 123456789
+   - Token Tipi: MASTER_TOKEN
+   - "Token Oluştur" butonuna tıkla
+4. Client Token oluştur:
+   - Hesap Numarası: 987654321
+   - Master Seç: Master-1
+   - Token Tipi: CLIENT_TOKEN
+   - "Token Oluştur" butonuna tıkla
+
+**Token Kopyala**:
+- Oluşturulan tokenları kopyala
+- Master EA'nın `MasterToken` parametresine yapıştır
+- Client EA'nın `ClientToken` parametresine yapıştır
+
+### 3.6 Environment Variables Ayarla
 
 **Dosya**: `.env` veya `config/db.php`
 
@@ -311,7 +386,7 @@ ADMIN_TOKEN=ADMIN_SECRET_TOKEN_123
 TRADER_TOKEN=TRADER_SECRET_TOKEN_123
 ```
 
-### 3.6 Dashboard'a Erişim
+### 3.7 Dashboard'a Erişim
 
 **URL**: 
 ```
@@ -346,9 +421,12 @@ https://fx.haziroglu.com/Dashboard/dashboard-v5.php
 
 ### Web Dashboard
 - [ ] Dashboard dosyaları FTP'ye yüklendi
-- [ ] Database tabloları oluşturuldu
+- [ ] Database tabloları oluşturuldu (masters, clients, token_logs)
 - [ ] config/db.php ayarlandı
-- [ ] Environment variables ayarlandı
+- [ ] Token Yönetimi sayfasına erişim sağlandı
+- [ ] Master Token oluşturuldu
+- [ ] Client Token oluşturuldu
+- [ ] Tokenlar EA'lara yapıştırıldı
 - [ ] Dashboard'a erişim sağlandı
 - [ ] Login başarılı
 
