@@ -21,17 +21,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Kullanıcı adı ve şifre gereklidir.';
     } else {
         try {
-            $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
-            $stmt->execute([$username]);
+            $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ? OR email = ?");
+            $stmt->execute([$username, $username]);
             $user = $stmt->fetch();
             
-            if ($user && password_verify($password, $user['password_hash'])) {
-                $token = bin2hex(random_bytes(TOKEN_LENGTH));
-                $updateStmt = $pdo->prepare("UPDATE users SET auth_token = ?, auth_token_expires = DATE_ADD(NOW(), INTERVAL ? DAY) WHERE id = ?");
-                $updateStmt->execute([$token, 30, $user['id']]);
+            // SHA2 hash veya password_verify ile kontrol et
+            $passwordMatch = false;
+            if ($user) {
+                // password_verify ile kontrol et (PHP hash)
+                if (password_verify($password, $user['password_hash'])) {
+                    $passwordMatch = true;
+                }
+                // SHA2 hash ile kontrol et (MySQL hash)
+                elseif ($user['password_hash'] === hash('sha256', $password)) {
+                    $passwordMatch = true;
+                }
+            }
+            
+            if ($user && $passwordMatch) {
+                $token = bin2hex(random_bytes(32));
+                $updateStmt = $pdo->prepare("UPDATE users SET auth_token = ?, auth_token_expires = DATE_ADD(NOW(), INTERVAL 30 DAY) WHERE id = ?");
+                $updateStmt->execute([$token, $user['id']]);
                 setSecureCookie('user_token', $token);
                 logAction('LOGIN_SUCCESS', $username, 'INFO');
-                header("Location: dashboard.php");
+                header("Location: dashboard-v5.php");
                 exit;
             } else {
                 $error = 'Geçersiz kullanıcı adı veya şifre.';
