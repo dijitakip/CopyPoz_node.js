@@ -21,6 +21,8 @@ if ($type === 'master') {
         $result = $conn->query($query);
         $masters = $result->fetch_all(MYSQLI_ASSOC);
         
+        // JSON çıktısını temizle ve gönder
+        ob_clean();
         header('Content-Type: application/json');
         echo json_encode([
             'success' => true,
@@ -129,6 +131,8 @@ elseif ($type === 'client') {
         $result = $conn->query($query);
         $clients = $result->fetch_all(MYSQLI_ASSOC);
         
+        // JSON çıktısını temizle ve gönder
+        ob_clean();
         header('Content-Type: application/json');
         echo json_encode([
             'success' => true,

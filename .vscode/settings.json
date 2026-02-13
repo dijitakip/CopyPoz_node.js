@@ -1,0 +1,4 @@
+{
+    "php.validate.executablePath": "c:\\Users\\diji.dev\\source\\repos\\FX\\CopyPoz\\tools\\php\\php.exe",
+    "php.validate.run": "onSave"
+}

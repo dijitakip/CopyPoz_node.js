@@ -518,7 +518,7 @@ Role: admin
 ```
 Dashboard/
 ├── index.php (Giriş Sayfası)
-├── dashboard-v5.php (Ana Dashboard)
+├── dashboard.php (Ana Dashboard)
 ├── user-management.php (Kullanıcı Yönetimi)
 ├── tokens-management.php (Token Yönetimi)
 ├── register.php (Kayıt)

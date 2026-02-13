@@ -12,6 +12,9 @@
 #include <Trade\Trade.mqh>
 #include <Trade\PositionInfo.mqh>
 
+#define INVALID_SOCKET -1
+#define SOCKET_ERROR -1
+
 //+------------------------------------------------------------------+
 //| LANGUAGE SYSTEM (Inline)                                         |
 //+------------------------------------------------------------------+
@@ -108,10 +111,10 @@ LanguageStrings GetLanguage(ENUM_LANGUAGE lang_type) {
 //+------------------------------------------------------------------+
 //| LICENSE SYSTEM (Inline)                                          |
 //+------------------------------------------------------------------+
-enum ENUM_LICENSE_TYPE { LICENSE_TRIAL = 0, LICENSE_PRO = 1, LICENSE_ENTERPRISE = 2 };
+enum COPYPOZ_LICENSE_TYPE { LICENSE_TRIAL = 0, LICENSE_PRO = 1, LICENSE_ENTERPRISE = 2 };
 
 struct LicenseInfo {
-   ENUM_LICENSE_TYPE type;
+   COPYPOZ_LICENSE_TYPE type;
    string key;
    bool is_valid;
    bool is_expired;
@@ -151,7 +154,9 @@ LicenseInfo ValidateLicense(string license_key) {
    }
    
    int year = StringToInteger(parts[2]);
-   if(year < TimeYear(TimeCurrent())) {
+   MqlDateTime currentTime;
+   TimeToStruct(TimeCurrent(), currentTime);
+   if(year < currentTime.year) {
       license.is_expired = true;
       license.error_message = "License year is in the past";
       return license;
@@ -162,13 +167,13 @@ LicenseInfo ValidateLicense(string license_key) {
    return license;
 }
 
-string LicenseTypeToString(ENUM_LICENSE_TYPE type) {
+string LicenseTypeToString(COPYPOZ_LICENSE_TYPE type) {
    if(type == LICENSE_TRIAL) return "TRIAL";
    if(type == LICENSE_PRO) return "PRO";
    return "ENTERPRISE";
 }
 
-int GetMaxClients(ENUM_LICENSE_TYPE license_type) {
+int GetMaxClients(COPYPOZ_LICENSE_TYPE license_type) {
    if(license_type == LICENSE_TRIAL) return 5;
    if(license_type == LICENSE_PRO) return 50;
    return 1000;
@@ -182,6 +187,7 @@ input string   LicenseKey        = "DEMO";
 input string   TcpAddress        = "0.0.0.0:2000";
 input int      BroadcastInterval = 500;
 input bool     LogDetailed       = true;
+input bool     LogVerbose        = false; // Detaylı debug loglarını (raw data, timer vb.) aç
 input bool     EnableWebMonitor  = true;
 input string   WebMonitorUrl     = "https://fx.haziroglu.com/api/signal.php";
 input string   DashboardUrl      = "https://fx.haziroglu.com";
@@ -197,7 +203,40 @@ LanguageStrings g_lang;
 LicenseInfo    g_license;
 ulong          g_lastLicenseCheck = 0;
 
-int            g_serverSocket = INVALID_SOCKET;
+#import "ws2_32.dll"
+  int socket(int af, int type, int protocol);
+  int bind(int s, const int &addr[], int namelen);
+  int listen(int s, int backlog);
+  int accept(int s, const int &addr[], int &addrlen);
+  int send(int s, const uchar &buf[], int len, int flags);
+  int recv(int s, uchar &buf[], int len, int flags);
+  int closesocket(int s);
+  int WSAGetLastError();
+  int WSAStartup(int wVersionRequested, uchar &lpWSAData[]);
+  int WSACleanup();
+  int inet_addr(const uchar &cp[]);
+  int htons(int hostshort);
+  int setsockopt(int s, int level, int optname, const int &optval[], int optlen);
+  int ioctlsocket(int s, int cmd, int &argp);
+#import
+
+#define AF_INET         2
+#define SOCK_STREAM     1
+#define IPPROTO_TCP     6
+#define INADDR_ANY      0
+#define SOL_SOCKET      0xffff
+#define SO_REUSEADDR    0x0004
+#define FIONBIO         0x8004667e
+#define FIONBIO_UINT    2147772030 // (uint)0x8004667e
+
+struct sockaddr_in {
+   short sin_family;
+   ushort sin_port;
+   uint sin_addr;
+   char sin_zero[8];
+};
+
+int g_serverSocket = INVALID_SOCKET;
 int            g_clientSockets[];
 ulong          g_clientLastData[];
 int            g_clientCount = 0;
@@ -208,8 +247,7 @@ ulong          g_lastWebUpdate = 0;
 ulong          g_lastBroadcast = 0;
 ulong          g_lastCommandCheck = 0;
 bool           g_broadcastEnabled = true;
-string         g_lastCommand = "";
-ulong          g_lastCommandTime = 0;
+string         g_currentMasterToken = "";
 
 //+------------------------------------------------------------------+
 //| EXPERT INITIALIZATION                                            |
@@ -221,11 +259,12 @@ int OnInit() {
    Print(g_lang.msg_starting);
 
    // Token'ı Dashboard'dan al
+   g_currentMasterToken = MasterToken;
    if(AutoFetchToken && EnableWebMonitor) {
       string fetchedToken = FetchMasterTokenFromDashboard();
       if(fetchedToken != "") {
-         MasterToken = fetchedToken;
-         Print("Master token fetched from Dashboard: ", MasterToken);
+         g_currentMasterToken = fetchedToken;
+         Print("Master token fetched from Dashboard: ", g_currentMasterToken);
       } else {
          Print("WARNING: Could not fetch token from Dashboard, using default");
       }
@@ -272,9 +311,10 @@ void OnDeinit(const int reason) {
    EventKillTimer();
    CloseAllConnections();
    if(g_serverSocket != INVALID_SOCKET) {
-      SocketClose(g_serverSocket);
+      closesocket(g_serverSocket);
       g_serverSocket = INVALID_SOCKET;
    }
+   WSACleanup();
    Print(g_lang.msg_stopped);
 }
 
@@ -282,19 +322,30 @@ void OnDeinit(const int reason) {
 //| TIMER FUNCTION                                                   |
 //+------------------------------------------------------------------+
 void OnTimer() {
-   if(GetTickCount() - g_lastLicenseCheck > (30 * 24 * 60 * 60 * 1000)) {
+   // Debug loop activity
+   // if(LogDetailed) Print("OnTimer tick");
+
+   if(GetTickCount() - g_lastLicenseCheck > (30UL * 24 * 60 * 60 * 1000)) {
       CheckLicenseWithAPI();
       g_lastLicenseCheck = GetTickCount();
    }
    
    if(g_tcpInitialized) {
       AcceptNewConnections();
-      HandleClientConnections();
+      
+      // HandleClientConnections consumes data but doesn't send broadcast.
+      // Broadcast is handled separately below.
+      HandleClientConnections(); 
+      
       CheckConnectionTimeouts();
    }
      
-   if(g_broadcastEnabled && (GetTickCount() - g_lastBroadcast > BroadcastInterval)) {
-      BroadcastPositions();
+   if(g_broadcastEnabled && (GetTickCount() - g_lastBroadcast > (ulong)BroadcastInterval)) {
+      // Force broadcast if we have clients
+      if(g_clientCount > 0) {
+          if(LogVerbose) Print("Broadcasting positions to ", g_clientCount, " clients");
+          BroadcastPositions();
+      }
       g_lastBroadcast = GetTickCount();
    }
      
@@ -327,34 +378,123 @@ void OnTradeTransaction(const MqlTradeTransaction& trans,
 bool InitTcpServer() {
    ResetLastError();
    
-   g_serverSocket = SocketCreate(SOCK_STREAM);
+   // Parse address and port from TcpAddress
+   string addressParts[];
+   int partsCount = StringSplit(TcpAddress, ':', addressParts);
+   if(partsCount != 2) {
+      Print("Invalid TCP address format. Expected format: 0.0.0.0:2000");
+      return false;
+   }
+   
+   string ipAddress = addressParts[0];
+   int port = (int)StringToInteger(addressParts[1]);
+   
+   uchar wsaData[400];
+   if(WSAStartup(0x202, wsaData) != 0) {
+      Print("WSAStartup failed");
+      return false;
+   }
+
+   g_serverSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
    if(g_serverSocket == INVALID_SOCKET) {
-      Print(g_lang.msg_tcp_socket_error, " Error: ", GetLastError());
+      Print(g_lang.msg_tcp_socket_error, " Error: ", WSAGetLastError());
       return false;
    }
    
    if(LogDetailed) Print(g_lang.msg_tcp_socket_created, ": ", g_serverSocket);
    
-   if(!SocketSetNonBlocking(g_serverSocket)) {
-      Print(g_lang.msg_tcp_nonblocking_error, " Error: ", GetLastError());
-      SocketClose(g_serverSocket);
+   // Enable SO_REUSEADDR
+   int optval[1];
+   optval[0] = 1;
+   setsockopt(g_serverSocket, SOL_SOCKET, SO_REUSEADDR, optval, 4);
+
+   // Check if ipAddress is 0.0.0.0, which means INADDR_ANY (0)
+   int ipVal = 0;
+   // inet_addr("0.0.0.0") returns 0 on some systems but checking string is safer
+    // Note: INADDR_ANY is 0.
+    
+    uchar ip_chars[];
+    StringToCharArray(ipAddress, ip_chars);
+    
+    if(ipAddress == "0.0.0.0") {
+        ipVal = 0;
+    } else {
+        ipVal = inet_addr(ip_chars);
+    }
+   
+   // SIMPLIFIED BIND LOGIC
+   // We will use a simpler struct packing for bind
+   // AF_INET (2) + Port (Big Endian) + IP + Zero padding
+   
+   int server_addr[4];
+   
+   // Port needs to be in Network Byte Order (Big Endian)
+   // htons(port) converts host to network short
+   ushort port_n = (ushort)htons((int)port);
+   
+   // Combine family and port into first int
+   // Low 16 bits: AF_INET (2)
+   // High 16 bits: Port
+   server_addr[0] = 2 | (port_n << 16); 
+   
+   // Second int is IP Address (already in Network Byte Order from inet_addr)
+   server_addr[1] = ipVal;
+   
+   // Padding
+   server_addr[2] = 0;
+   server_addr[3] = 0;
+   
+   if(LogDetailed) {
+       Print("Binding to IP: ", ipAddress, " Port: ", port);
+       Print("IP Value: ", ipVal);
+       Print("Addr[0]: ", server_addr[0]);
+   }
+   
+   if(bind(g_serverSocket, server_addr, 16) == -1) {
+      int error = WSAGetLastError();
+      Print(g_lang.msg_tcp_bind_error, " Address: ", TcpAddress, " Error: ", error);
+      
+      // Eğer hata 10048 (Address already in use) ise
+      if(error == 10048) {
+         Print("⚠️ Port is busy (10048). Waiting 3 seconds to retry...");
+         closesocket(g_serverSocket);
+         Sleep(3000);
+         
+         // Re-create socket
+         g_serverSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+         
+         // Enable SO_REUSEADDR for retry socket
+         int retry_optval[1];
+         retry_optval[0] = 1;
+         setsockopt(g_serverSocket, SOL_SOCKET, SO_REUSEADDR, retry_optval, 4);
+         
+         // Retry bind
+         if(bind(g_serverSocket, server_addr, 16) == -1) {
+             Print("❌ Retry failed. Error: ", WSAGetLastError());
+             closesocket(g_serverSocket);
+             g_serverSocket = INVALID_SOCKET;
+             return false;
+         } else {
+             Print("✅ Retry successful! Port bound.");
+         }
+      } else {
+         closesocket(g_serverSocket);
+         g_serverSocket = INVALID_SOCKET;
+         return false;
+      }
+   }
+   
+   // Listen for connections
+   if(listen(g_serverSocket, 50) == -1) {
+      Print(g_lang.msg_tcp_listen_error, " Error: ", WSAGetLastError());
+      closesocket(g_serverSocket);
       g_serverSocket = INVALID_SOCKET;
       return false;
    }
    
-   if(!SocketBind(g_serverSocket, TcpAddress)) {
-      Print(g_lang.msg_tcp_bind_error, " Address: ", TcpAddress, " Error: ", GetLastError());
-      SocketClose(g_serverSocket);
-      g_serverSocket = INVALID_SOCKET;
-      return false;
-   }
-   
-   if(!SocketListen(g_serverSocket, 50)) {
-      Print(g_lang.msg_tcp_listen_error, " Error: ", GetLastError());
-      SocketClose(g_serverSocket);
-      g_serverSocket = INVALID_SOCKET;
-      return false;
-   }
+   // Set non-blocking mode
+   int nonBlocking = 1;
+   ioctlsocket(g_serverSocket, (int)FIONBIO, nonBlocking);
    
    ArrayResize(g_clientSockets, 0);
    ArrayResize(g_clientLastData, 0);
@@ -372,12 +512,17 @@ void AcceptNewConnections() {
    int max_clients = GetMaxClients(g_license.type);
    if(g_clientCount >= max_clients) return;
    
-   int clientSocket = SocketAccept(g_serverSocket);
+   int addr[4];
+   int len = 16;
+   int clientSocket = accept(g_serverSocket, addr, len);
+   
    if(clientSocket == INVALID_SOCKET) return;
    
    if(LogDetailed) Print(g_lang.msg_tcp_client_connected, "! Socket: ", clientSocket);
    
-   SocketSetNonBlocking(clientSocket);
+   // Set non-blocking mode
+   int nonBlocking = 1;
+   ioctlsocket(clientSocket, (int)FIONBIO, nonBlocking);
    
    int newSize = g_clientCount + 1;
    ArrayResize(g_clientSockets, newSize);
@@ -397,12 +542,16 @@ void HandleClientConnections() {
    for(int i = 0; i < g_clientCount; i++) {
       if(g_clientSockets[i] == INVALID_SOCKET) continue;
       
-      string positionJson = BuildPositionJson();
+      uchar buffer[];
+      ArrayResize(buffer, 65536);
       
-      if(!SendToClient(i, positionJson)) {
-         if(LogDetailed) Print("Send to client failed: ", g_clientSockets[i]);
-      } else {
+      // Consume any incoming data (Heartbeats, etc.)
+      // We do NOT send positions here anymore to reduce load.
+      // Positions are sent only via BroadcastPositions() based on timer.
+      int received = recv(g_clientSockets[i], buffer, 65536, 0);
+      if(received > 0) {
          g_clientLastData[i] = GetTickCount();
+         // if(LogDetailed) Print("Received data from client ", g_clientSockets[i], ": ", received, " bytes");
       }
    }
 }
@@ -416,7 +565,7 @@ void CheckConnectionTimeouts() {
    for(int i = g_clientCount - 1; i >= 0; i--) {
       if(g_clientSockets[i] == INVALID_SOCKET) continue;
       
-      if(currentTime - g_clientLastData[i] > ConnectionTimeout) {
+      if(currentTime - g_clientLastData[i] > (ulong)ConnectionTimeout) {
          Print("Client timeout! Socket: ", g_clientSockets[i]);
          CloseClientConnection(i);
       }
@@ -430,18 +579,24 @@ bool SendToClient(int clientIndex, string data) {
    if(clientIndex < 0 || clientIndex >= g_clientCount) return false;
    if(g_clientSockets[clientIndex] == INVALID_SOCKET) return false;
    
-   char buffer[];
+   uchar buffer[];
    StringToCharArray(data, buffer, 0, StringLen(data));
    
-   int sent = SocketSend(g_clientSockets[clientIndex], buffer, ArraySize(buffer));
+   int res = send(g_clientSockets[clientIndex], buffer, StringLen(data), 0);
    
-   if(sent == SOCKET_ERROR) {
-      int error = GetLastError();
-      if(error != 10035) {
+   if(res == -1) {
+      int error = WSAGetLastError();
+      if(error != 10035) { // WSAEWOULDBLOCK
          Print("ERROR: SocketSend failed! Error: ", error);
          CloseClientConnection(clientIndex);
          return false;
+      } else {
+         // EWOULDBLOCK means buffer full, but we consider it 'sent' for flow control or should we retry?
+         // For now, logging it might spam.
+         // if(LogDetailed) Print("SocketSend buffer full (EWOULDBLOCK)");
       }
+   } else if (res < StringLen(data)) {
+      if(LogDetailed) Print("Warning: SocketSend sent partial data. Sent: ", res, " Expected: ", StringLen(data));
    }
    
    return true;
@@ -454,9 +609,9 @@ void CloseClientConnection(int clientIndex) {
    if(clientIndex < 0 || clientIndex >= g_clientCount) return;
    
    if(g_clientSockets[clientIndex] != INVALID_SOCKET) {
-      SocketClose(g_clientSockets[clientIndex]);
-      g_clientSockets[clientIndex] = INVALID_SOCKET;
+      closesocket(g_clientSockets[clientIndex]);
       Print("Client connection closed. Socket: ", g_clientSockets[clientIndex]);
+      g_clientSockets[clientIndex] = INVALID_SOCKET;
    }
    
    for(int i = clientIndex; i < g_clientCount - 1; i++) {
@@ -504,7 +659,7 @@ string BuildPositionJson() {
          double profit = PositionGetDouble(POSITION_PROFIT);
          
          string posJson = StringFormat(
-            "{\"ticket\":%I64d,\"symbol\":\"%s\",\"type\":%d,\"volume\":%.2f,\"price\":%.5f,\"sl\":%.5f,\"tp\":%.5f,\"magic\":%d,\"comment\":\"%s\",\"profit\":%.2f}",
+            "{\"ticket\":%llu,\"symbol\":\"%s\",\"type\":%d,\"volume\":%.2f,\"price\":%.5f,\"sl\":%.5f,\"tp\":%.5f,\"magic\":%d,\"comment\":\"%s\",\"profit\":%.2f}",
             ticket, symbol, type, volume, price, sl, tp, magic, comment, profit
          );
          
@@ -514,6 +669,14 @@ string BuildPositionJson() {
    }
    
    json += "]}";
+   
+   // Add newline delimiter for easier parsing on client side if needed, 
+   // but JSON is self-contained. 
+   // Let's debug empty JSONs.
+   if(count == 0 && LogVerbose) {
+       // Print("No positions to broadcast");
+   }
+   
    return json;
 }
 
@@ -522,12 +685,24 @@ string BuildPositionJson() {
 //+------------------------------------------------------------------+
 void BroadcastPositions() {
    if(g_clientCount == 0) {
-      if(LogDetailed) Print(g_lang.msg_no_clients);
+      if(LogVerbose) Print(g_lang.msg_no_clients);
       return;
    }
    
-   if(LogDetailed) Print(g_lang.msg_broadcast_positions, ": ", g_clientCount, " clients");
-   HandleClientConnections();
+   if(LogVerbose) Print(g_lang.msg_broadcast_positions, ": ", g_clientCount, " clients");
+   
+   string positionJson = BuildPositionJson();
+   
+   for(int i = 0; i < g_clientCount; i++) {
+      if(g_clientSockets[i] == INVALID_SOCKET) continue;
+      
+      if(!SendToClient(i, positionJson)) {
+         if(LogDetailed) Print("Send to client failed: ", g_clientSockets[i]);
+      } else {
+         if(LogVerbose) Print("Sent data to client ", g_clientSockets[i], ": ", StringLen(positionJson), " bytes");
+         g_clientLastData[i] = GetTickCount();
+      }
+   }
 }
 
 //+------------------------------------------------------------------+
@@ -554,7 +729,7 @@ void SendToWebAPI() {
          double profit = PositionGetDouble(POSITION_PROFIT);
          
          string posJson = StringFormat(
-            "{\"ticket\":%I64d,\"symbol\":\"%s\",\"type\":%d,\"volume\":%.2f,\"price\":%.5f,\"sl\":%.5f,\"tp\":%.5f,\"magic\":%d,\"comment\":\"%s\",\"profit\":%.2f}",
+            "{\"ticket\":%llu,\"symbol\":\"%s\",\"type\":%d,\"volume\":%.2f,\"price\":%.5f,\"sl\":%.5f,\"tp\":%.5f,\"magic\":%d,\"comment\":\"%s\",\"profit\":%.2f}",
             ticket, symbol, type, volume, price, sl, tp, magic, comment, profit
          );
          
@@ -570,16 +745,16 @@ void SendToWebAPI() {
    
    char result[];
    string resultHeaders;
-   string headers = "Content-Type: application/json\r\nAuthorization: Bearer " + MasterToken;
+   string headers = "Content-Type: application/json\r\nAuthorization: Bearer " + g_currentMasterToken;
    
-   if(LogDetailed) Print(g_lang.msg_web_api_sending, ": ", WebMonitorUrl);
+   if(LogVerbose) Print(g_lang.msg_web_api_sending, ": ", WebMonitorUrl);
    
    int res = WebRequest("POST", WebMonitorUrl, headers, 1000, data, result, resultHeaders);
    
    if(res == 200) {
-      if(LogDetailed) Print(g_lang.msg_web_api_success);
+      if(LogVerbose) Print(g_lang.msg_web_api_success);
    } else {
-      Print(g_lang.msg_web_api_error, "! Code: ", res);
+      if(LogDetailed) Print(g_lang.msg_web_api_error, " Code: ", res);
    }
 }
 
@@ -596,7 +771,7 @@ void CheckLicenseWithAPI() {
    string json = StringFormat(
       "{\"license_key\":\"%s\",\"terminal_id\":\"%s\"}",
       LicenseKey,
-      IntegerToString(TerminalInfoInteger(TERMINAL_COMMONDATA_PATH))
+      TerminalInfoString(TERMINAL_COMMONDATA_PATH)
    );
    
    char data[];
@@ -604,7 +779,7 @@ void CheckLicenseWithAPI() {
    
    char result[];
    string resultHeaders;
-   string headers = "Content-Type: application/json\r\nAuthorization: Bearer " + MasterToken;
+   string headers = "Content-Type: application/json\r\nAuthorization: Bearer " + g_currentMasterToken;
    
    int res = WebRequest("POST", checkUrl, headers, 5000, data, result, resultHeaders);
    
@@ -632,7 +807,7 @@ void CheckForCommands() {
    char data[];
    char result[];
    string resultHeaders;
-   string headers = "Content-Type: application/json\r\nAuthorization: Bearer " + MasterToken;
+   string headers = "Content-Type: application/json\r\nAuthorization: Bearer " + g_currentMasterToken;
    
    int res = WebRequest("GET", commandUrl, headers, 5000, data, result, resultHeaders);
    
@@ -644,7 +819,7 @@ void CheckForCommands() {
    string response = CharArrayToString(result);
    
    if(response == "" || response == "null") {
-      if(LogDetailed) Print("No pending commands");
+      // if(LogVerbose) Print("No pending commands");
       return;
    }
    
@@ -656,8 +831,6 @@ void CheckForCommands() {
    }
    
    Print("Command received: ", command);
-   g_lastCommand = command;
-   g_lastCommandTime = GetTickCount();
    
    ExecuteCommand(command);
 }

@@ -39,6 +39,7 @@ if ($action === 'list') {
     $result = $stmt->get_result();
     $groups = $result->fetch_all(MYSQLI_ASSOC);
     
+    ob_clean();
     header('Content-Type: application/json');
     echo json_encode([
         'success' => true,
@@ -224,6 +225,7 @@ elseif ($action === 'list_members') {
     $result = $stmt->get_result();
     $members = $result->fetch_all(MYSQLI_ASSOC);
     
+    ob_clean();
     header('Content-Type: application/json');
     echo json_encode([
         'success' => true,

@@ -39,15 +39,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'create') {
             $issuedDate = date('Y-m-d H:i:s');
             $expiryDate = date('Y-m-d H:i:s', strtotime("+$days days"));
             
-            // Veritabanına ekle
-            $stmt = $pdo->prepare("INSERT INTO licenses (license_key, type, issued_date, expiry_date, status) VALUES (?, ?, ?, ?, 'active')");
-            $stmt->execute([$licenseKey, $type, $issuedDate, $expiryDate]);
-            
-            logAction('LICENSE_CREATED', "Key: $licenseKey, Type: $type, Days: $days", 'INFO');
-            $message = "License created successfully. Key: <strong style='color: #667eea; font-family: monospace;'>$licenseKey</strong>";
-        } catch (Exception $e) {
-            $error = 'Error creating license: ' . $e->getMessage();
-        }
+        $expiryDate = date('Y-m-d H:i:s', strtotime("+$days days"));
+        
+        // Veritabanına ekle
+        $stmt = $pdo->prepare("INSERT INTO licenses (license_key, type, issued_date, expiry_date, status) VALUES (?, ?, ?, ?, 'active')");
+        $stmt->execute([$licenseKey, $type, $issuedDate, $expiryDate]);
+        
+        logAction('LICENSE_CREATED', "Key: $licenseKey, Type: $type, Days: $days", 'INFO');
+        $message = "License created successfully. Key: <strong style='color: #667eea; font-family: monospace;'>$licenseKey</strong>";
+    } catch (Exception $e) {
+        $error = 'Error creating license: ' . $e->getMessage();
     }
 }
 
@@ -110,9 +111,6 @@ $stats = $statsStmt->fetch();
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item"><a class="nav-link" href="../dashboard.php" style="color: rgba(255, 255, 255, 0.8);"><i class="fas fa-home"></i> Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="users.php" style="color: rgba(255, 255, 255, 0.8);"><i class="fas fa-users"></i> Kullanıcılar</a></li>
-                    <li class="nav-item"><a class="nav-link" href="clients.php" style="color: rgba(255, 255, 255, 0.8);"><i class="fas fa-server"></i> Client Yönetimi</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="licenses.php" style="color: rgba(255, 255, 255, 0.8);"><i class="fas fa-key"></i> Lisans Yönetimi</a></li>
                     <li class="nav-item"><a class="nav-link" href="../logout.php" style="color: rgba(255, 255, 255, 0.8);"><i class="fas fa-sign-out-alt"></i> Çıkış</a></li>
                 </ul>
             </div>
@@ -120,6 +118,16 @@ $stats = $statsStmt->fetch();
     </nav>
 
     <div class="container-fluid" style="padding: 20px;">
+        <!-- Admin Nav -->
+        <div class="admin-nav" style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; gap: 15px; flex-wrap: wrap;">
+            <span style="display: flex; align-items: center; font-weight: bold; margin-right: 10px;">👑 Admin Paneli:</span>
+            <a href="users.php" style="text-decoration: none; color: #2c3e50; font-weight: 600; padding: 8px 12px; border-radius: 5px; background: #ecf0f1; transition: all 0.3s;">👥 Kullanıcılar</a>
+            <a href="clients.php" style="text-decoration: none; color: #2c3e50; font-weight: 600; padding: 8px 12px; border-radius: 5px; background: #ecf0f1; transition: all 0.3s;">💻 Client Yönetimi</a>
+            <a href="master-groups-ui.php" style="text-decoration: none; color: #2c3e50; font-weight: 600; padding: 8px 12px; border-radius: 5px; background: #ecf0f1; transition: all 0.3s;">🔗 Master Grupları</a>
+            <a href="tokens-ui.php" style="text-decoration: none; color: #2c3e50; font-weight: 600; padding: 8px 12px; border-radius: 5px; background: #ecf0f1; transition: all 0.3s;">🔑 Token Yönetimi</a>
+            <a href="licenses.php" style="text-decoration: none; color: white; font-weight: 600; padding: 8px 12px; border-radius: 5px; background: #667eea; box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);">📜 Lisanslar</a>
+            <a href="profile.php" style="text-decoration: none; color: #2c3e50; font-weight: 600; padding: 8px 12px; border-radius: 5px; background: #ecf0f1; transition: all 0.3s;">⚙️ Profil</a>
+        </div>
         <h2 style="margin-bottom: 20px;"><i class="fas fa-key"></i> Lisans Yönetimi</h2>
 
         <?php if ($message): ?>

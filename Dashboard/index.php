@@ -4,6 +4,13 @@ require_once 'config/db.php';
 
 $user = authenticateUser();
 if ($user) {
+    // Session verilerini ayarla
+    $_SESSION['user_id'] = $user['id'];
+    $_SESSION['role'] = $user['role'];
+    $_SESSION['username'] = $user['username'];
+    
+    // Yönlendirme yapmadan önce session'ı kaydet
+    session_write_close();
     header("Location: dashboard.php");
     exit;
 }
@@ -43,8 +50,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $updateStmt = $pdo->prepare("UPDATE users SET auth_token = ?, auth_token_expires = DATE_ADD(NOW(), INTERVAL 30 DAY) WHERE id = ?");
                 $updateStmt->execute([$token, $user['id']]);
                 setSecureCookie('user_token', $token);
+                
+                // Session verilerini ayarla
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['role'] = $user['role'];
+                $_SESSION['username'] = $user['username'];
+                
                 logAction('LOGIN_SUCCESS', $username, 'INFO');
-                header("Location: dashboard-v5.php");
+                
+                // Yönlendirme yapmadan önce session'ı kaydet
+                session_write_close();
+                header("Location: dashboard.php");
                 exit;
             } else {
                 $error = 'Geçersiz kullanıcı adı veya şifre.';
@@ -130,8 +146,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </form>
 
                 <p style="text-align: center; margin-top: 20px;">
-                    <a href="forgot-password.php" style="color: #667eea; text-decoration: none; font-size: 14px;">
+                    <a href="forgot-password.php" style="color: #667eea; text-decoration: none; font-size: 14px; margin-right: 15px;">
                         <i class="fas fa-key"></i> Şifremi Unuttum
+                    </a>
+                    <span style="color: #ccc;">|</span>
+                    <a href="register.php" style="color: #667eea; text-decoration: none; font-size: 14px; margin-left: 15px;">
+                        <i class="fas fa-user-plus"></i> Kayıt Ol
                     </a>
                 </p>
             </div>
