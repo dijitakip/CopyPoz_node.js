@@ -51,6 +51,11 @@ $pending_commands = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CopyPoz V5 Dashboard</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -70,29 +75,7 @@ $pending_commands = $stmt->fetchAll(PDO::FETCH_ASSOC);
             padding: 20px;
         }
         
-        header {
-            background: #2c3e50;
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        header h1 {
-            font-size: 28px;
-        }
-        
-        header .user-info {
-            text-align: right;
-        }
-        
-        header .user-info p {
-            margin: 5px 0;
-            font-size: 14px;
-        }
+        /* Custom Header Removed - Replaced by Bootstrap Navbar */
 
         .admin-nav {
             background: white;
@@ -338,18 +321,22 @@ $pending_commands = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </style>
 </head>
 <body>
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); padding: 15px 0; margin-bottom: 30px;">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="dashboard.php" style="font-weight: 700; font-size: 20px; padding-left: 20px;"><i class="fas fa-chart-line"></i> CopyPoz V5</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"><span class="navbar-toggler-icon"></span></button>
+        <div class="collapse navbar-collapse" id="navbarNav" style="padding-right: 20px;">
+            <ul class="navbar-nav ms-auto align-items-center">
+                <li class="nav-item me-3" style="color: rgba(255,255,255,0.8); font-size: 14px;">
+                    <strong><?php echo htmlspecialchars($user['username']); ?></strong> (<?php echo ucfirst($user_role); ?>)
+                </li>
+                <li class="nav-item"><a class="nav-link" href="logout.php" style="color: rgba(255, 255, 255, 0.8);"><i class="fas fa-sign-out-alt"></i> Çıkış</a></li>
+            </ul>
+        </div>
+    </div>
+    </nav>
+
     <div class="container">
-        <header>
-            <div>
-                <h1>🚀 CopyPoz V5 Dashboard</h1>
-                <p>Hybrid Master-Client Trading System</p>
-            </div>
-            <div class="user-info">
-                <p><strong><?php echo htmlspecialchars($user['name']); ?></strong></p>
-                <p><?php echo ucfirst($user_role); ?></p>
-                <p><a href="logout.php" style="color: #3498db; text-decoration: none;">Çıkış</a></p>
-            </div>
-        </header>
         
         <?php if ($user_role === 'admin'): ?>
         <div class="admin-nav">
@@ -600,5 +587,18 @@ $pending_commands = $stmt->fetchAll(PDO::FETCH_ASSOC);
             location.reload();
         }, 5000);
     </script>
+    <script>
+        // Service Worker registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(registration => {
+                    console.log('Service Worker registered:', registration);
+                })
+                .catch(error => {
+                    console.log('Service Worker registration failed:', error);
+                });
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

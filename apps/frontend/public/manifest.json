@@ -1,0 +1,12 @@
+{
+  "name": "CopyPoz",
+  "short_name": "CopyPoz",
+  "description": "FX Trading Dashboard",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#667eea",
+  "orientation": "portrait-primary",
+  "icons": []
+}

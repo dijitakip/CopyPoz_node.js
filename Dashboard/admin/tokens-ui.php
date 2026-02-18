@@ -15,8 +15,11 @@ $page_title = 'Token Yönetimi';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $page_title; ?> - CopyPoz V5</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../assets/style.css">
     <style>
+        body { background-color: #f8f9fa; }
         .token-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -242,15 +245,20 @@ $page_title = 'Token Yönetimi';
     </style>
 </head>
 <body>
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 40px 20px;">
-        <div class="container" style="max-width: 1200px; margin: 0 auto;">
-            <!-- Header -->
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <a href="../dashboard.php" style="color: white; text-decoration: none; font-weight: bold; font-size: 18px;">&larr; Dashboard'a Dön</a>
-                    <h2 style="color: white; margin: 0; font-weight: 800; letter-spacing: -0.5px;">Token Yönetimi</h2>
-                </div>
-            </div>
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); padding: 15px 0;">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="../dashboard.php" style="font-weight: 700; font-size: 20px;"><i class="fas fa-chart-line"></i> CopyPoz</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"><span class="navbar-toggler-icon"></span></button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="../dashboard.php" style="color: rgba(255, 255, 255, 0.8);"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="../logout.php" style="color: rgba(255, 255, 255, 0.8);"><i class="fas fa-sign-out-alt"></i> Çıkış</a></li>
+            </ul>
+        </div>
+    </div>
+    </nav>
+    
+    <div class="container" style="padding-top: 20px;">
         <!-- Admin Nav -->
         <div class="admin-nav">
             <span style="display: flex; align-items: center; font-weight: bold; margin-right: 10px;">👑 Admin Paneli:</span>
@@ -544,5 +552,6 @@ $page_title = 'Token Yönetimi';
             loadClientTokens();
         });
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

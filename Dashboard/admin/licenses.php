@@ -39,9 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'create') {
             $issuedDate = date('Y-m-d H:i:s');
             $expiryDate = date('Y-m-d H:i:s', strtotime("+$days days"));
             
-        $expiryDate = date('Y-m-d H:i:s', strtotime("+$days days"));
-        
-        // Veritabanına ekle
+            // Veritabanına ekle
         $stmt = $pdo->prepare("INSERT INTO licenses (license_key, type, issued_date, expiry_date, status) VALUES (?, ?, ?, ?, 'active')");
         $stmt->execute([$licenseKey, $type, $issuedDate, $expiryDate]);
         
@@ -50,6 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'create') {
     } catch (Exception $e) {
         $error = 'Error creating license: ' . $e->getMessage();
     }
+}
 }
 
 // Lisans deaktif et

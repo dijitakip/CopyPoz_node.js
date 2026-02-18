@@ -41,6 +41,11 @@ self.addEventListener('activate', event => {
 
 // Fetch event - Network first, fallback to cache
 self.addEventListener('fetch', event => {
+  // Chrome extension isteklerini yoksay
+  if (event.request.url.startsWith('chrome-extension://')) {
+    return;
+  }
+
   // API çağrıları için network first
   if (event.request.url.includes('/api/')) {
     event.respondWith(
@@ -63,14 +68,29 @@ self.addEventListener('fetch', event => {
           if (response) {
             return response;
           }
-          return fetch(event.request)
+          // Redirect mode 'manual' kullanarak tarayıcının yönlendirmeyi yönetmesine izin ver
+          return fetch(event.request.url, {
+              method: event.request.method,
+              headers: event.request.headers,
+              mode: 'cors', // Navigation requests usually need 'same-origin' or 'navigate', but 'cors' is safe for fetch
+              credentials: event.request.credentials,
+              redirect: 'manual' 
+          })
             .then(response => {
+              // Opaque redirect (302) veya Redirected durumlarını kontrol et
+              if (response.type === 'opaqueredirect' || response.redirected) {
+                  return response;
+              }
+              
               if (!response || response.status !== 200 || response.type === 'error') {
                 return response;
               }
+              
               const responseToCache = response.clone();
               caches.open(CACHE_NAME)
                 .then(cache => {
+                  // Desteklenmeyen şemaları (chrome-extension vb.) kontrol et
+                  if(!event.request.url.startsWith('http')) return;
                   cache.put(event.request, responseToCache);
                 });
               return response;

@@ -18,8 +18,8 @@ if ($type === 'master') {
     if ($action === 'list') {
         // Tüm master tokenlarını listele
         $query = "SELECT * FROM masters ORDER BY created_at DESC";
-        $result = $conn->query($query);
-        $masters = $result->fetch_all(MYSQLI_ASSOC);
+        $result = $pdo->query($query);
+        $masters = $result->fetchAll(PDO::FETCH_ASSOC);
         
         // JSON çıktısını temizle ve gönder
         ob_clean();
@@ -48,19 +48,19 @@ if ($type === 'master') {
         
         $query = "INSERT INTO masters (master_name, account_number, account_name, token, token_type, status) 
                   VALUES (?, ?, ?, ?, ?, 'active')";
-        $stmt = $conn->prepare($query);
-        $stmt->bind_param('sisss', $master_name, $account_number, $account_name, $token, $token_type);
+        $stmt = $pdo->prepare($query);
+        $stmt->execute([$master_name, $account_number, $account_name, $token, $token_type]);
         
-        if ($stmt->execute()) {
+        if ($stmt) {
             logAction('TOKEN_CREATE', "Master: $master_name, Token: $token", 'INFO');
             jsonResponse([
                 'success' => true,
                 'message' => 'Master token oluşturuldu',
                 'token' => $token,
-                'master_id' => $conn->insert_id
+                'master_id' => $pdo->lastInsertId()
             ]);
         } else {
-            jsonResponse(['error' => 'Token oluşturulamadı: ' . $conn->error], 500);
+            jsonResponse(['error' => 'Token oluşturulamadı'], 500);
         }
     }
     
@@ -69,11 +69,9 @@ if ($type === 'master') {
         $master_id = intval($_GET['id'] ?? 0);
         
         $query = "SELECT * FROM masters WHERE id = ?";
-        $stmt = $conn->prepare($query);
-        $stmt->bind_param('i', $master_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $master = $result->fetch_assoc();
+        $stmt = $pdo->prepare($query);
+        $stmt->execute([$master_id]);
+        $master = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($master) {
             jsonResponse(['success' => true, 'data' => $master]);
@@ -88,10 +86,9 @@ if ($type === 'master') {
         $new_token = bin2hex(random_bytes(32));
         
         $query = "UPDATE masters SET token = ? WHERE id = ?";
-        $stmt = $conn->prepare($query);
-        $stmt->bind_param('si', $new_token, $master_id);
+        $stmt = $pdo->prepare($query);
         
-        if ($stmt->execute()) {
+        if ($stmt->execute([$new_token, $master_id])) {
             logAction('TOKEN_REGENERATE', "Master ID: $master_id, New Token: $new_token", 'INFO');
             jsonResponse([
                 'success' => true,
@@ -108,10 +105,9 @@ if ($type === 'master') {
         $master_id = intval($_POST['id'] ?? 0);
         
         $query = "DELETE FROM masters WHERE id = ?";
-        $stmt = $conn->prepare($query);
-        $stmt->bind_param('i', $master_id);
+        $stmt = $pdo->prepare($query);
         
-        if ($stmt->execute()) {
+        if ($stmt->execute([$master_id])) {
             logAction('TOKEN_DELETE', "Master ID: $master_id", 'INFO');
             jsonResponse(['success' => true, 'message' => 'Master token silindi']);
         } else {
@@ -128,8 +124,8 @@ elseif ($type === 'client') {
         $query = "SELECT c.*, m.master_name FROM clients c 
                   LEFT JOIN masters m ON c.master_id = m.id 
                   ORDER BY c.created_at DESC";
-        $result = $conn->query($query);
-        $clients = $result->fetch_all(MYSQLI_ASSOC);
+        $result = $pdo->query($query);
+        $clients = $result->fetchAll(PDO::FETCH_ASSOC);
         
         // JSON çıktısını temizle ve gönder
         ob_clean();
@@ -158,16 +154,15 @@ elseif ($type === 'client') {
         
         $query = "INSERT INTO clients (account_number, account_name, auth_token, token_type, master_id, status) 
                   VALUES (?, ?, ?, ?, ?, 'active')";
-        $stmt = $conn->prepare($query);
-        $stmt->bind_param('isssi', $account_number, $account_name, $token, $token_type, $master_id);
+        $stmt = $pdo->prepare($query);
         
-        if ($stmt->execute()) {
+        if ($stmt->execute([$account_number, $account_name, $token, $token_type, $master_id])) {
             logAction('CLIENT_TOKEN_CREATE', "Account: $account_number, Token: $token", 'INFO');
             jsonResponse([
                 'success' => true,
                 'message' => 'Client token oluşturuldu',
                 'token' => $token,
-                'client_id' => $conn->insert_id
+                'client_id' => $pdo->lastInsertId()
             ]);
         } else {
             jsonResponse(['error' => 'Client token oluşturulamadı'], 500);
@@ -180,10 +175,9 @@ elseif ($type === 'client') {
         $new_token = bin2hex(random_bytes(32));
         
         $query = "UPDATE clients SET auth_token = ? WHERE id = ?";
-        $stmt = $conn->prepare($query);
-        $stmt->bind_param('si', $new_token, $client_id);
+        $stmt = $pdo->prepare($query);
         
-        if ($stmt->execute()) {
+        if ($stmt->execute([$new_token, $client_id])) {
             logAction('CLIENT_TOKEN_REGENERATE', "Client ID: $client_id", 'INFO');
             jsonResponse([
                 'success' => true,
