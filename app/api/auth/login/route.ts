@@ -4,6 +4,13 @@ import { cookies } from 'next/headers';
 
 export async function POST(request: Request) {
   try {
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { error: 'Database not configured', code: 'DB_CONFIG_MISSING' },
+        { status: 500 }
+      );
+    }
+
     const { username, password } = await request.json();
 
     if (!username || !password) {
@@ -28,16 +35,20 @@ export async function POST(request: Request) {
       maxAge: 60 * 60 * 24 * 7 // 1 week
     });
 
-    return NextResponse.json({ 
-      success: true, 
-      user: { 
-        id: user.id, 
-        username: user.username, 
-        role: user.role 
-      } 
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role
+      }
     });
   } catch (error) {
     console.error('Login error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Internal Server Error';
+    // Production ortamında hassas hata detaylarını gizle
+    const safeMessage =
+      process.env.NODE_ENV === 'production' ? 'Internal Server Error' : message;
+    return NextResponse.json({ error: safeMessage }, { status: 500 });
   }
 }
