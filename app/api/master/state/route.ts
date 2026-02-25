@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
-import { MasterService } from '@repo/backend-core';
+import { prisma } from '@/lib/prisma';
 import { headers } from 'next/headers';
+
+
 
 export const dynamic = 'force-dynamic';
 
@@ -16,9 +18,14 @@ export async function POST(request: Request) {
     if (typeof total_positions !== 'number' || typeof positions_json !== 'string') {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
     }
-    await MasterService.updateMasterState({ total_positions, positions_json });
+    await prisma.masterState.upsert({
+      where: { id: 1 },
+      update: { total_positions, positions_json, updated_at: new Date() },
+      create: { id: 1, total_positions, positions_json },
+    });
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
+

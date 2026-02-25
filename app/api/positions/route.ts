@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import { MasterService } from '@repo/backend-core';
+import { prisma } from '@/lib/prisma';
 import { headers } from 'next/headers';
+
+
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  // Validate Master Token
   const authHeader = headers().get('authorization');
   const token = authHeader?.split(' ')[1];
 
@@ -14,7 +15,9 @@ export async function GET(request: Request) {
   }
 
   try {
-    const masterState = await MasterService.getMasterState();
+    const masterState = await prisma.masterState.findUnique({
+      where: { id: 1 },
+    });
     return NextResponse.json({ 
       positions: masterState?.positions_json ? JSON.parse(masterState.positions_json) : [] 
     });
@@ -23,3 +26,4 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Database error' }, { status: 500 });
   }
 }
+

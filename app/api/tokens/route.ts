@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@repo/backend-core/utils/db';
-import { headers } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { headers } from 'next/headers';
 import { randomBytes } from 'crypto';
+
+
 
 export const dynamic = 'force-dynamic';
 
@@ -64,3 +66,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
+

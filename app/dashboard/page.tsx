@@ -1,14 +1,68 @@
+'use client';
+
 import Link from 'next/link';
-import { ClientService, MasterService } from '@repo/backend-core';
+import { useEffect, useState } from 'react';
 import LogoutButton from './LogoutButton';
 
-export default async function DashboardPage() {
-  const clients = await ClientService.listClients();
-  const masterState = await MasterService.getMasterState();
-  const positions = masterState?.positions_json ? JSON.parse(masterState.positions_json) : [];
-  const totalClients = clients.length;
+interface Client {
+  id: number;
+  account_number: number;
+  account_name: string;
+  balance: number;
+  status: string;
+  last_seen?: string;
+}
+
+interface MasterState {
+  total_positions: number;
+  positions: any[];
+}
+
+export default function DashboardPage() {
+  const [clients, setClients] = useState<Client[]>([]);
+  const [masterState, setMasterState] = useState<MasterState>({ total_positions: 0, positions: [] });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('master_token') || process.env.NEXT_PUBLIC_MASTER_TOKEN;
+        
+        const [clientsRes, stateRes] = await Promise.all([
+          fetch('/api/clients', {
+            headers: { 'Authorization': `Bearer ${token}` },
+          }),
+          fetch('/api/master/state', {
+            headers: { 'Authorization': `Bearer ${token}` },
+          }),
+        ]);
+
+        if (clientsRes.ok) {
+          const data = await clientsRes.json();
+          setClients(data.clients || []);
+        }
+
+        if (stateRes.ok) {
+          const data = await stateRes.json();
+          setMasterState(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   const totalBalance = clients.reduce((sum, c) => sum + Number(c.balance), 0);
-  const openPositions = positions.length || 0;
+  const openPositions = masterState.positions.length || 0;
+
+  if (loading) {
+    return <div className="container mx-auto p-4">Yükleniyor...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg p-4 mb-8">
@@ -37,7 +91,7 @@ export default async function DashboardPage() {
           <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-purple-500">
             <h3 className="text-gray-500 text-sm font-bold uppercase mb-2">Clients</h3>
             <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold text-gray-800">{totalClients}</span>
+              <span className="text-2xl font-bold text-gray-800">{clients.length}</span>
               <span className="text-sm text-gray-500">Connected</span>
             </div>
           </div>
@@ -81,7 +135,7 @@ export default async function DashboardPage() {
                         <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">{c.status}</span>
                       </td>
                       <td className="px-6 py-4">${Number(c.balance).toLocaleString()}</td>
-                      <td className="px-6 py-4">{c.last_seen ? new Date(c.last_seen as unknown as string).toLocaleString() : '-'}</td>
+                      <td className="px-6 py-4">{c.last_seen ? new Date(c.last_seen).toLocaleString() : '-'}</td>
                     </tr>
                   ))}
                 </tbody>

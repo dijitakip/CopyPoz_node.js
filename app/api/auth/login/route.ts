@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
-import { AuthService } from '@repo/backend-core';
+import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
+import * as bcrypt from 'bcryptjs';
+
+
 
 export async function POST(request: Request) {
   try {
@@ -17,9 +20,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing credentials' }, { status: 400 });
     }
 
-    const user = await AuthService.login(username, password);
+    const user = await prisma.user.findUnique({
+      where: { username },
+    });
 
-    if (!user) {
+    if (!user || !await bcrypt.compare(password, user.password_hash)) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
@@ -46,9 +51,9 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Login error:', error);
     const message = error instanceof Error ? error.message : 'Internal Server Error';
-    // Production ortamında hassas hata detaylarını gizle
     const safeMessage =
       process.env.NODE_ENV === 'production' ? 'Internal Server Error' : message;
     return NextResponse.json({ error: safeMessage }, { status: 500 });
   }
 }
+

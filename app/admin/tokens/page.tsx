@@ -74,7 +74,7 @@ export default function TokensPage() {
   };
 
   const handleRevokeToken = async (id: number) => {
-    if (!confirm('Token'ı iptal etmek istediğinizden emin misiniz?')) return;
+    if (!confirm("Token'ı iptal etmek istediğinizden emin misiniz?")) return;
     
     try {
       const token = localStorage.getItem('master_token') || process.env.NEXT_PUBLIC_MASTER_TOKEN;

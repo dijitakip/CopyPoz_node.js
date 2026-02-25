@@ -18,9 +18,7 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"],
-      "@repo/backend-core": ["./src/backend/index.ts"],
-      "@repo/shared": ["./src/shared/index.ts"]
+      "@/*": ["./*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

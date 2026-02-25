@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
-import { ClientService } from '@repo/backend-core';
+import { prisma } from '@/lib/prisma';
 import { headers } from 'next/headers';
 import { NextRequest } from 'next/server';
+
+
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +23,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid account_number' }, { status: 400 });
     }
 
-    const client = await ClientService.findByAccountNumber(account_number);
+    const client = await prisma.client.findUnique({
+      where: { account_number },
+    });
     if (!client) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     }
@@ -29,9 +33,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const command = await ClientService.getPendingCommand(client.id);
+    const command = await prisma.commandQueue.findFirst({
+      where: { client_id: client.id, status: 'pending' },
+      orderBy: { created_at: 'asc' },
+    });
     return NextResponse.json({ command: command ?? null });
   } catch (e) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
+

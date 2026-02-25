@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
-import { ClientService } from '@repo/backend-core';
+import { prisma } from '@/lib/prisma';
 import { headers } from 'next/headers';
+import { randomBytes } from 'crypto';
+
+
 
 export const dynamic = 'force-dynamic';
 
@@ -29,26 +32,44 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
     }
 
-    const payload = {
-      account_number,
-      account_name,
-      balance,
-      equity,
-      open_positions,
-      auth_token: auth_token as string | undefined,
-      registration_token:
-        registration_token ??
-        (bearer === process.env.MASTER_TOKEN ? process.env.MASTER_TOKEN : undefined),
-    };
+    let client = await prisma.client.findUnique({
+      where: { account_number },
+    });
 
-    const result = await ClientService.registerOrUpdate(payload as any);
+    const isNew = !client;
+    const token = auth_token || randomBytes(32).toString('hex');
+
+    if (isNew) {
+      client = await prisma.client.create({
+        data: {
+          account_number,
+          account_name,
+          balance,
+          equity,
+          open_positions,
+          auth_token: token,
+          status: 'active',
+        },
+      });
+    } else {
+      client = await prisma.client.update({
+        where: { account_number },
+        data: {
+          balance,
+          equity,
+          open_positions,
+        },
+      });
+    }
+
     return NextResponse.json({
       ok: true,
-      client_id: result.client.id,
-      token: result.token,
-      isNew: result.isNew,
+      client_id: client.id,
+      token: client.auth_token,
+      isNew,
     });
   } catch (e) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
+

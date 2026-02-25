@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
-import { ClientService } from '@repo/backend-core';
+import { prisma } from '@/lib/prisma';
 import { headers } from 'next/headers';
+
+
 
 export const dynamic = 'force-dynamic';
 
@@ -13,9 +15,12 @@ export async function GET() {
   }
 
   try {
-    const clients = await ClientService.listClients();
+    const clients = await prisma.client.findMany({
+      orderBy: { created_at: 'desc' },
+    });
     return NextResponse.json({ ok: true, clients });
   } catch (e) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
+
