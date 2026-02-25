@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: copypoz_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: copypoz_v5
+      MYSQL_USER: copypoz
+      MYSQL_PASSWORD: copypoz123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./Dashboard/database_complete.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+    networks:
+      - copypoz_network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: copypoz_app
+    environment:
+      DATABASE_URL: mysql://copypoz:copypoz123@mysql:3306/copypoz_v5
+      MASTER_TOKEN: ${MASTER_TOKEN:-your_secure_master_token_here}
+      SESSION_SECRET: ${SESSION_SECRET:-your_session_secret_here}
+      NODE_ENV: development
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - copypoz_network
+    command: npm run dev
+
+volumes:
+  mysql_data:
+
+networks:
+  copypoz_network:
+    driver: bridge

@@ -38,6 +38,18 @@ export default function Admin() {
       href: '/admin/licenses',
       icon: '🔐',
     },
+    {
+      title: 'Token Yönetimi',
+      description: 'API token\'larını oluştur ve yönet',
+      href: '/admin/tokens',
+      icon: '🔑',
+    },
+    {
+      title: 'Sistem Logları',
+      description: 'Sistem aktivitelerini ve hataları görüntüle',
+      href: '/admin/logs',
+      icon: '📋',
+    },
   ];
 
   return (
@@ -46,7 +58,7 @@ export default function Admin() {
         <h1>Admin Paneli</h1>
         <p className="text-gray-600 mt-2">CopyPoz V5 Yönetim Sistemi</p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
           {menuItems.map((item) => (
             <Link
               key={item.href}

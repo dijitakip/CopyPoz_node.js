@@ -2,6 +2,12 @@
 
 import { useEffect, useState } from 'react';
 
+interface Client {
+  id: number;
+  account_number: number;
+  account_name: string;
+}
+
 interface MasterGroup {
   id: number;
   name: string;
@@ -9,22 +15,21 @@ interface MasterGroup {
   created_at: string;
   assignments: Array<{
     id: number;
-    client: {
-      id: number;
-      account_number: number;
-      account_name: string;
-    };
+    client: Client;
   }>;
 }
 
 export default function MasterGroupsPage() {
   const [groups, setGroups] = useState<MasterGroup[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [newGroup, setNewGroup] = useState({
     name: '',
     description: '',
   });
+  const [selectedGroup, setSelectedGroup] = useState<MasterGroup | null>(null);
+  const [selectedClientId, setSelectedClientId] = useState('');
 
   const fetchGroups = async () => {
     try {
@@ -45,8 +50,26 @@ export default function MasterGroupsPage() {
     }
   };
 
+  const fetchClients = async () => {
+    try {
+      const token = localStorage.getItem('master_token') || process.env.NEXT_PUBLIC_MASTER_TOKEN;
+      const res = await fetch('/api/clients', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) throw new Error('Failed to fetch clients');
+      const data = await res.json();
+      setClients(data.clients || []);
+    } catch (err) {
+      console.error('Failed to fetch clients:', err);
+    }
+  };
+
   useEffect(() => {
     fetchGroups();
+    fetchClients();
   }, []);
 
   const handleCreateGroup = async (e: React.FormEvent) => {
@@ -89,6 +112,57 @@ export default function MasterGroupsPage() {
 
       if (!res.ok) throw new Error('Failed to delete group');
       fetchGroups();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Unknown error');
+    }
+  };
+
+  const handleAddClientToGroup = async (groupId: number) => {
+    if (!selectedClientId) {
+      alert('Lütfen bir client seçin');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('master_token') || process.env.NEXT_PUBLIC_MASTER_TOKEN;
+      const res = await fetch(`/api/master-groups/${groupId}/clients`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          client_id: parseInt(selectedClientId),
+          master_id: 1,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed to add client');
+      
+      setSelectedClientId('');
+      setSelectedGroup(null);
+      fetchGroups();
+      alert('Client gruba eklendi');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Unknown error');
+    }
+  };
+
+  const handleRemoveClientFromGroup = async (groupId: number, assignmentId: number) => {
+    if (!confirm('Client\'ı gruptan çıkarmak istediğinizden emin misiniz?')) return;
+
+    try {
+      const token = localStorage.getItem('master_token') || process.env.NEXT_PUBLIC_MASTER_TOKEN;
+      const res = await fetch(`/api/master-groups/${groupId}/clients?assignment_id=${assignmentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) throw new Error('Failed to remove client');
+      fetchGroups();
+      alert('Client gruptan çıkarıldı');
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Unknown error');
     }
@@ -152,16 +226,63 @@ export default function MasterGroupsPage() {
               {group.assignments.length > 0 ? (
                 <div className="mt-3 pt-3 border-t">
                   <p className="text-sm font-bold mb-2">Atanan Clientler ({group.assignments.length})</p>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 mb-3">
                     {group.assignments.map((assign) => (
-                      <div key={assign.id} className="bg-gray-50 p-2 rounded text-sm">
-                        {assign.client.account_name} ({assign.client.account_number})
+                      <div key={assign.id} className="bg-gray-50 p-2 rounded text-sm flex justify-between items-center">
+                        <span>{assign.client.account_name} ({assign.client.account_number})</span>
+                        <button
+                          onClick={() => handleRemoveClientFromGroup(group.id, assign.id)}
+                          className="text-red-600 hover:text-red-800 text-xs font-bold"
+                        >
+                          ✕
+                        </button>
                       </div>
                     ))}
                   </div>
                 </div>
               ) : (
                 <p className="text-sm text-gray-500 mt-3">Atanan client yok</p>
+              )}
+
+              {selectedGroup?.id === group.id && (
+                <div className="mt-3 pt-3 border-t bg-blue-50 p-3 rounded">
+                  <p className="text-sm font-bold mb-2">Client Ekle</p>
+                  <div className="flex gap-2">
+                    <select
+                      value={selectedClientId}
+                      onChange={(e) => setSelectedClientId(e.target.value)}
+                      className="flex-1 border rounded px-3 py-2 text-sm"
+                    >
+                      <option value="">Client Seç</option>
+                      {clients.map((client) => (
+                        <option key={client.id} value={client.id}>
+                          {client.account_name} ({client.account_number})
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => handleAddClientToGroup(group.id)}
+                      className="bg-green-600 text-white rounded px-3 py-2 hover:bg-green-700 text-sm"
+                    >
+                      Ekle
+                    </button>
+                    <button
+                      onClick={() => setSelectedGroup(null)}
+                      className="bg-gray-400 text-white rounded px-3 py-2 hover:bg-gray-500 text-sm"
+                    >
+                      İptal
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {selectedGroup?.id !== group.id && (
+                <button
+                  onClick={() => setSelectedGroup(group)}
+                  className="mt-3 text-blue-600 hover:text-blue-800 font-bold text-sm"
+                >
+                  + Client Ekle
+                </button>
               )}
             </div>
           ))}
