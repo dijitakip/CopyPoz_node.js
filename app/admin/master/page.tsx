@@ -2,46 +2,24 @@
 
 import { useEffect, useState } from 'react';
 
-interface Position {
-  ticket: number;
-  symbol: string;
-  type: string;
-  volume: number;
-  price: number;
-  sl: number;
-  tp: number;
-  profit: number;
-}
-
-interface MasterState {
-  total_positions: number;
-  positions: Position[];
-  updated_at: string;
-}
-
 export default function MasterPage() {
-  const [state, setState] = useState<MasterState | null>(null);
+  const [masterState, setMasterState] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchMasterState = async () => {
       try {
-        const token = localStorage.getItem('master_token') || process.env.NEXT_PUBLIC_MASTER_TOKEN;
-        const res = await fetch('/api/master/positions', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
+        const token = localStorage.getItem('master_token') || 'master-local-123';
+        const res = await fetch('/api/master/state', {
+          headers: { 'Authorization': `Bearer ${token}` },
         });
 
-        if (!res.ok) {
-          throw new Error('Failed to fetch master state');
+        if (res.ok) {
+          const data = await res.json();
+          setMasterState(data);
         }
-
-        const data = await res.json();
-        setState(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        console.error('Failed to fetch master state:', err);
       } finally {
         setLoading(false);
       }
@@ -52,65 +30,88 @@ export default function MasterPage() {
     return () => clearInterval(interval);
   }, []);
 
-  if (loading) return <div className="container"><p>Yükleniyor...</p></div>;
-  if (error) return <div className="container"><p className="text-red-600">Hata: {error}</p></div>;
-
   return (
-    <main className="container">
-      <div className="card">
-        <h1>Master Pozisyonları</h1>
-        
-        <div className="grid grid-cols-3 gap-4 mt-4 mb-6">
-          <div className="bg-blue-50 p-4 rounded">
-            <p className="text-sm text-gray-600">Toplam Pozisyon</p>
-            <p className="text-2xl font-bold">{state?.total_positions || 0}</p>
-          </div>
-          <div className="bg-green-50 p-4 rounded">
-            <p className="text-sm text-gray-600">Son Güncelleme</p>
-            <p className="text-sm font-mono">
-              {state?.updated_at ? new Date(state.updated_at).toLocaleString('tr-TR') : '-'}
-            </p>
-          </div>
-          <div className="bg-purple-50 p-4 rounded">
-            <p className="text-sm text-gray-600">Durum</p>
-            <p className="text-lg font-bold text-green-600">Aktif</p>
-          </div>
-        </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-800">Master EA Yönetimi</h1>
+        <p className="text-gray-600 mt-1">Master EA durumunu izleyin ve kontrol edin</p>
+      </div>
 
-        {state?.positions && state.positions.length > 0 ? (
+      {/* Status Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
+          <p className="text-gray-600 text-sm font-medium">Master Durumu</p>
+          <p className="text-3xl font-bold text-gray-800 mt-2">
+            {masterState?.total_positions > 0 ? 'Aktif' : 'Idle'}
+          </p>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
+          <p className="text-gray-600 text-sm font-medium">Açık Pozisyonlar</p>
+          <p className="text-3xl font-bold text-gray-800 mt-2">{masterState?.total_positions || 0}</p>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
+          <p className="text-gray-600 text-sm font-medium">Son Güncelleme</p>
+          <p className="text-sm text-gray-600 mt-2">
+            {masterState?.updated_at
+              ? new Date(masterState.updated_at).toLocaleString('tr-TR')
+              : 'Henüz güncellenmedi'}
+          </p>
+        </div>
+      </div>
+
+      {/* Master Controls */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-xl font-bold text-gray-800 mb-4">Master Kontrolleri</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <button className="p-4 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg transition font-medium">
+            ⏸ Durdur
+          </button>
+          <button className="p-4 bg-green-500 hover:bg-green-600 text-white rounded-lg transition font-medium">
+            ▶ Devam Et
+          </button>
+          <button className="p-4 bg-red-500 hover:bg-red-600 text-white rounded-lg transition font-medium">
+            🔴 Tümünü Kapat
+          </button>
+          <button className="p-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition font-medium">
+            🔄 Yenile
+          </button>
+        </div>
+      </div>
+
+      {/* Positions */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-xl font-bold text-gray-800 mb-4">Açık Pozisyonlar</h2>
+        {masterState?.positions && masterState.positions.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left text-gray-500">
-              <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3">Ticket</th>
-                  <th className="px-6 py-3">Sembol</th>
-                  <th className="px-6 py-3">Tip</th>
-                  <th className="px-6 py-3">Hacim</th>
-                  <th className="px-6 py-3">Fiyat</th>
-                  <th className="px-6 py-3">SL</th>
-                  <th className="px-6 py-3">TP</th>
-                  <th className="px-6 py-3">Kar/Zarar</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Sembol</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Tip</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Lot</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Açılış Fiyatı</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Kar/Zarar</th>
                 </tr>
               </thead>
-              <tbody>
-                {state.positions.map((pos) => (
-                  <tr key={pos.ticket} className="bg-white border-b hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium">{pos.ticket}</td>
-                    <td className="px-6 py-4">{pos.symbol}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded text-xs font-bold ${
-                        pos.type === 'BUY' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+              <tbody className="divide-y divide-gray-200">
+                {masterState.positions.map((pos: any, idx: number) => (
+                  <tr key={idx} className="hover:bg-gray-50 transition">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-800">{pos.symbol}</td>
+                    <td className="px-6 py-4 text-sm">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        pos.type === 'BUY'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
                       }`}>
                         {pos.type}
                       </span>
                     </td>
-                    <td className="px-6 py-4">{pos.volume}</td>
-                    <td className="px-6 py-4">{pos.price.toFixed(5)}</td>
-                    <td className="px-6 py-4">{pos.sl.toFixed(5)}</td>
-                    <td className="px-6 py-4">{pos.tp.toFixed(5)}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 text-sm text-gray-600">{pos.volume}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{pos.open_price}</td>
+                    <td className="px-6 py-4 text-sm font-medium">
                       <span className={pos.profit >= 0 ? 'text-green-600' : 'text-red-600'}>
-                        ${pos.profit.toFixed(2)}
+                        ${pos.profit?.toFixed(2) || '0.00'}
                       </span>
                     </td>
                   </tr>
@@ -119,9 +120,9 @@ export default function MasterPage() {
             </table>
           </div>
         ) : (
-          <p className="text-gray-500 mt-4">Açık pozisyon yok</p>
+          <div className="text-center text-gray-500 py-8">Açık pozisyon yok</div>
         )}
       </div>
-    </main>
+    </div>
   );
 }

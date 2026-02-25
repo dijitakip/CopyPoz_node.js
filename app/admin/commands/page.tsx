@@ -6,55 +6,55 @@ interface Command {
   id: number;
   client_id: number;
   command: string;
-  params: string | null;
   status: string;
   created_at: string;
-  executed_at: string | null;
-  client?: {
-    account_number: number;
-    account_name: string;
-  };
+  executed_at?: string;
+  client?: { account_name: string };
 }
 
 export default function CommandsPage() {
   const [commands, setCommands] = useState<Command[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [newCommand, setNewCommand] = useState({
+  const [clients, setClients] = useState<any[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({
     client_id: '',
     command: 'PAUSE',
-    params: '',
   });
 
-  const fetchCommands = async () => {
-    try {
-      const token = localStorage.getItem('master_token') || process.env.NEXT_PUBLIC_MASTER_TOKEN;
-      const res = await fetch('/api/commands', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) throw new Error('Failed to fetch commands');
-      const data = await res.json();
-      setCommands(data.commands || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchCommands();
-    const interval = setInterval(fetchCommands, 3000);
-    return () => clearInterval(interval);
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('master_token') || 'master-local-123';
+        
+        const [cmdRes, clientRes] = await Promise.all([
+          fetch('/api/commands', { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch('/api/clients', { headers: { 'Authorization': `Bearer ${token}` } }),
+        ]);
+
+        if (cmdRes.ok) {
+          const data = await cmdRes.json();
+          setCommands(data.commands || []);
+        }
+
+        if (clientRes.ok) {
+          const data = await clientRes.json();
+          setClients(data.clients || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
-  const handleSendCommand = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('master_token') || process.env.NEXT_PUBLIC_MASTER_TOKEN;
+      const token = localStorage.getItem('master_token') || 'master-local-123';
       const res = await fetch('/api/commands', {
         method: 'POST',
         headers: {
@@ -62,137 +62,135 @@ export default function CommandsPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          client_id: parseInt(newCommand.client_id),
-          command: newCommand.command,
-          params: newCommand.params ? JSON.parse(newCommand.params) : null,
+          client_id: parseInt(formData.client_id),
+          command: formData.command,
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to send command');
-      
-      setNewCommand({ client_id: '', command: 'PAUSE', params: '' });
-      fetchCommands();
+      if (res.ok) {
+        setFormData({ client_id: '', command: 'PAUSE' });
+        setShowForm(false);
+        alert('Komut başarıyla gönderildi');
+        // Refresh commands
+        const cmdRes = await fetch('/api/commands', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (cmdRes.ok) {
+          const data = await cmdRes.json();
+          setCommands(data.commands || []);
+        }
+      }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Unknown error');
+      alert('Hata: ' + (err instanceof Error ? err.message : 'Bilinmeyen hata'));
     }
   };
-
-  const handleDeleteCommand = async (id: number) => {
-    if (!confirm('Komutu silmek istediğinizden emin misiniz?')) return;
-    
-    try {
-      const token = localStorage.getItem('master_token') || process.env.NEXT_PUBLIC_MASTER_TOKEN;
-      const res = await fetch(`/api/commands/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) throw new Error('Failed to delete command');
-      fetchCommands();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Unknown error');
-    }
-  };
-
-  if (loading) return <div className="container"><p>Yükleniyor...</p></div>;
 
   return (
-    <main className="container">
-      <div className="card">
-        <h1>Komut Yönetimi</h1>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">Komut Yönetimi</h1>
+          <p className="text-gray-600 mt-1">Clientlere komut gönderin</p>
+        </div>
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
+        >
+          {showForm ? '✕ İptal' : '+ Yeni Komut'}
+        </button>
+      </div>
 
-        <div className="bg-blue-50 p-4 rounded mt-4 mb-6">
-          <h2 className="font-bold mb-4">Yeni Komut Gönder</h2>
-          <form onSubmit={handleSendCommand} className="grid grid-cols-4 gap-4">
-            <input
-              type="number"
-              placeholder="Client ID"
-              value={newCommand.client_id}
-              onChange={(e) => setNewCommand({ ...newCommand, client_id: e.target.value })}
-              className="border rounded px-3 py-2"
-              required
-            />
+      {/* Form */}
+      {showForm && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Komut Gönder</h2>
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <select
-              value={newCommand.command}
-              onChange={(e) => setNewCommand({ ...newCommand, command: e.target.value })}
-              className="border rounded px-3 py-2"
+              value={formData.client_id}
+              onChange={(e) => setFormData({ ...formData, client_id: e.target.value })}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              required
             >
-              <option>PAUSE</option>
-              <option>RESUME</option>
-              <option>CLOSE_ALL</option>
-              <option>CLOSE_ALL_BUY</option>
-              <option>CLOSE_ALL_SELL</option>
+              <option value="">Client Seçin</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.account_name} ({c.account_number})
+                </option>
+              ))}
             </select>
-            <input
-              type="text"
-              placeholder="Parametreler (JSON)"
-              value={newCommand.params}
-              onChange={(e) => setNewCommand({ ...newCommand, params: e.target.value })}
-              className="border rounded px-3 py-2"
-            />
+
+            <select
+              value={formData.command}
+              onChange={(e) => setFormData({ ...formData, command: e.target.value })}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            >
+              <option value="PAUSE">Durdur</option>
+              <option value="RESUME">Devam Et</option>
+              <option value="CLOSE_ALL">Tümünü Kapat</option>
+              <option value="CLOSE_BUY">Buy Pozisyonlarını Kapat</option>
+              <option value="CLOSE_SELL">Sell Pozisyonlarını Kapat</option>
+            </select>
+
             <button
               type="submit"
-              className="bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700"
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition"
             >
               Gönder
             </button>
           </form>
         </div>
+      )}
 
-        {error && <p className="text-red-600 mb-4">Hata: {error}</p>}
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left text-gray-500">
-            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-              <tr>
-                <th className="px-6 py-3">ID</th>
-                <th className="px-6 py-3">Client</th>
-                <th className="px-6 py-3">Komut</th>
-                <th className="px-6 py-3">Durum</th>
-                <th className="px-6 py-3">Oluşturulma</th>
-                <th className="px-6 py-3">İşlem</th>
-              </tr>
-            </thead>
-            <tbody>
-              {commands.map((cmd) => (
-                <tr key={cmd.id} className="bg-white border-b hover:bg-gray-50">
-                  <td className="px-6 py-4 font-medium">{cmd.id}</td>
-                  <td className="px-6 py-4">
-                    {cmd.client?.account_name || `Client ${cmd.client_id}`}
-                  </td>
-                  <td className="px-6 py-4 font-mono">{cmd.command}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded text-xs font-bold ${
-                      cmd.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      cmd.status === 'executed' ? 'bg-green-100 text-green-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {cmd.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-xs">
-                    {new Date(cmd.created_at).toLocaleString('tr-TR')}
-                  </td>
-                  <td className="px-6 py-4">
-                    <button
-                      onClick={() => handleDeleteCommand(cmd.id)}
-                      className="text-red-600 hover:text-red-800 font-bold"
-                    >
-                      Sil
-                    </button>
-                  </td>
+      {/* Table */}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        {loading ? (
+          <div className="p-6 text-center text-gray-500">Yükleniyor...</div>
+        ) : commands.length === 0 ? (
+          <div className="p-6 text-center text-gray-500">Komut bulunamadı</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Client</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Komut</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Durum</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Oluşturulma</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Yürütülme</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {commands.length === 0 && (
-          <p className="text-gray-500 mt-4">Komut yok</p>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {commands.map((cmd) => (
+                  <tr key={cmd.id} className="hover:bg-gray-50 transition">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-800">
+                      {cmd.client?.account_name || 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{cmd.command}</td>
+                    <td className="px-6 py-4 text-sm">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        cmd.status === 'executed'
+                          ? 'bg-green-100 text-green-800'
+                          : cmd.status === 'pending'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {cmd.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      {new Date(cmd.created_at).toLocaleString('tr-TR')}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      {cmd.executed_at ? new Date(cmd.executed_at).toLocaleString('tr-TR') : '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }

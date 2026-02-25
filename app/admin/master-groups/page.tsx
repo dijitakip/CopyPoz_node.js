@@ -2,80 +2,49 @@
 
 import { useEffect, useState } from 'react';
 
-interface Client {
-  id: number;
-  account_number: number;
-  account_name: string;
-}
-
 interface MasterGroup {
   id: number;
   name: string;
-  description: string | null;
+  description?: string;
   created_at: string;
-  assignments: Array<{
-    id: number;
-    client: Client;
-  }>;
+  assignments?: any[];
 }
 
 export default function MasterGroupsPage() {
   const [groups, setGroups] = useState<MasterGroup[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [newGroup, setNewGroup] = useState({
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({
     name: '',
     description: '',
   });
-  const [selectedGroup, setSelectedGroup] = useState<MasterGroup | null>(null);
-  const [selectedClientId, setSelectedClientId] = useState('');
 
   const fetchGroups = async () => {
     try {
-      const token = localStorage.getItem('master_token') || process.env.NEXT_PUBLIC_MASTER_TOKEN;
+      const token = localStorage.getItem('master_token') || 'master-local-123';
       const res = await fetch('/api/master-groups', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
       });
 
-      if (!res.ok) throw new Error('Failed to fetch groups');
-      const data = await res.json();
-      setGroups(data.groups || []);
+      if (res.ok) {
+        const data = await res.json();
+        setGroups(data.groups || []);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      console.error('Failed to fetch groups:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchClients = async () => {
-    try {
-      const token = localStorage.getItem('master_token') || process.env.NEXT_PUBLIC_MASTER_TOKEN;
-      const res = await fetch('/api/clients', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) throw new Error('Failed to fetch clients');
-      const data = await res.json();
-      setClients(data.clients || []);
-    } catch (err) {
-      console.error('Failed to fetch clients:', err);
-    }
-  };
-
   useEffect(() => {
     fetchGroups();
-    fetchClients();
   }, []);
 
-  const handleCreateGroup = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('master_token') || process.env.NEXT_PUBLIC_MASTER_TOKEN;
+      const token = localStorage.getItem('master_token') || 'master-local-123';
       const res = await fetch('/api/master-groups', {
         method: 'POST',
         headers: {
@@ -83,215 +52,94 @@ export default function MasterGroupsPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: newGroup.name,
-          description: newGroup.description,
-          created_by: 1, // TODO: Get from session
+          ...formData,
+          created_by: 1,
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to create group');
-      
-      setNewGroup({ name: '', description: '' });
-      fetchGroups();
+      if (res.ok) {
+        setFormData({ name: '', description: '' });
+        setShowForm(false);
+        fetchGroups();
+        alert('Master Grubu başarıyla oluşturuldu');
+      }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Unknown error');
+      alert('Hata: ' + (err instanceof Error ? err.message : 'Bilinmeyen hata'));
     }
   };
-
-  const handleDeleteGroup = async (id: number) => {
-    if (!confirm('Grubu silmek istediğinizden emin misiniz?')) return;
-    
-    try {
-      const token = localStorage.getItem('master_token') || process.env.NEXT_PUBLIC_MASTER_TOKEN;
-      const res = await fetch(`/api/master-groups/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) throw new Error('Failed to delete group');
-      fetchGroups();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Unknown error');
-    }
-  };
-
-  const handleAddClientToGroup = async (groupId: number) => {
-    if (!selectedClientId) {
-      alert('Lütfen bir client seçin');
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem('master_token') || process.env.NEXT_PUBLIC_MASTER_TOKEN;
-      const res = await fetch(`/api/master-groups/${groupId}/clients`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          client_id: parseInt(selectedClientId),
-          master_id: 1,
-        }),
-      });
-
-      if (!res.ok) throw new Error('Failed to add client');
-      
-      setSelectedClientId('');
-      setSelectedGroup(null);
-      fetchGroups();
-      alert('Client gruba eklendi');
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Unknown error');
-    }
-  };
-
-  const handleRemoveClientFromGroup = async (groupId: number, assignmentId: number) => {
-    if (!confirm('Client\'ı gruptan çıkarmak istediğinizden emin misiniz?')) return;
-
-    try {
-      const token = localStorage.getItem('master_token') || process.env.NEXT_PUBLIC_MASTER_TOKEN;
-      const res = await fetch(`/api/master-groups/${groupId}/clients?assignment_id=${assignmentId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) throw new Error('Failed to remove client');
-      fetchGroups();
-      alert('Client gruptan çıkarıldı');
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Unknown error');
-    }
-  };
-
-  if (loading) return <div className="container"><p>Yükleniyor...</p></div>;
 
   return (
-    <main className="container">
-      <div className="card">
-        <h1>Master Grupları</h1>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">Master Grupları</h1>
+          <p className="text-gray-600 mt-1">Master EA gruplarını yönetin</p>
+        </div>
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
+        >
+          {showForm ? '✕ İptal' : '+ Yeni Grup'}
+        </button>
+      </div>
 
-        <div className="bg-blue-50 p-4 rounded mt-4 mb-6">
-          <h2 className="font-bold mb-4">Yeni Grup Oluştur</h2>
-          <form onSubmit={handleCreateGroup} className="grid grid-cols-3 gap-4">
+      {/* Form */}
+      {showForm && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Yeni Master Grubu</h2>
+          <form onSubmit={handleSubmit} className="space-y-4">
             <input
               type="text"
               placeholder="Grup Adı"
-              value={newGroup.name}
-              onChange={(e) => setNewGroup({ ...newGroup, name: e.target.value })}
-              className="border rounded px-3 py-2"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               required
             />
-            <input
-              type="text"
+            <textarea
               placeholder="Açıklama"
-              value={newGroup.description}
-              onChange={(e) => setNewGroup({ ...newGroup, description: e.target.value })}
-              className="border rounded px-3 py-2"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              rows={3}
             />
             <button
               type="submit"
-              className="bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700"
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition"
             >
               Oluştur
             </button>
           </form>
         </div>
+      )}
 
-        {error && <p className="text-red-600 mb-4">Hata: {error}</p>}
-
-        <div className="space-y-4">
-          {groups.map((group) => (
-            <div key={group.id} className="border rounded p-4 bg-white">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h3 className="font-bold text-lg">{group.name}</h3>
-                  <p className="text-sm text-gray-600">{group.description}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Oluşturulma: {new Date(group.created_at).toLocaleString('tr-TR')}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleDeleteGroup(group.id)}
-                  className="text-red-600 hover:text-red-800 font-bold"
-                >
-                  Sil
-                </button>
+      {/* Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {loading ? (
+          <div className="col-span-full text-center text-gray-500 py-8">Yükleniyor...</div>
+        ) : groups.length === 0 ? (
+          <div className="col-span-full text-center text-gray-500 py-8">Master Grubu bulunamadı</div>
+        ) : (
+          groups.map((group) => (
+            <div key={group.id} className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition">
+              <h3 className="text-lg font-bold text-gray-800">{group.name}</h3>
+              <p className="text-sm text-gray-600 mt-2">{group.description || 'Açıklama yok'}</p>
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <p className="text-xs text-gray-500">
+                  Oluşturulma: {new Date(group.created_at).toLocaleDateString('tr-TR')}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Clientler: {group.assignments?.length || 0}
+                </p>
               </div>
-
-              {group.assignments.length > 0 ? (
-                <div className="mt-3 pt-3 border-t">
-                  <p className="text-sm font-bold mb-2">Atanan Clientler ({group.assignments.length})</p>
-                  <div className="grid grid-cols-2 gap-2 mb-3">
-                    {group.assignments.map((assign) => (
-                      <div key={assign.id} className="bg-gray-50 p-2 rounded text-sm flex justify-between items-center">
-                        <span>{assign.client.account_name} ({assign.client.account_number})</span>
-                        <button
-                          onClick={() => handleRemoveClientFromGroup(group.id, assign.id)}
-                          className="text-red-600 hover:text-red-800 text-xs font-bold"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500 mt-3">Atanan client yok</p>
-              )}
-
-              {selectedGroup?.id === group.id && (
-                <div className="mt-3 pt-3 border-t bg-blue-50 p-3 rounded">
-                  <p className="text-sm font-bold mb-2">Client Ekle</p>
-                  <div className="flex gap-2">
-                    <select
-                      value={selectedClientId}
-                      onChange={(e) => setSelectedClientId(e.target.value)}
-                      className="flex-1 border rounded px-3 py-2 text-sm"
-                    >
-                      <option value="">Client Seç</option>
-                      {clients.map((client) => (
-                        <option key={client.id} value={client.id}>
-                          {client.account_name} ({client.account_number})
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={() => handleAddClientToGroup(group.id)}
-                      className="bg-green-600 text-white rounded px-3 py-2 hover:bg-green-700 text-sm"
-                    >
-                      Ekle
-                    </button>
-                    <button
-                      onClick={() => setSelectedGroup(null)}
-                      className="bg-gray-400 text-white rounded px-3 py-2 hover:bg-gray-500 text-sm"
-                    >
-                      İptal
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {selectedGroup?.id !== group.id && (
-                <button
-                  onClick={() => setSelectedGroup(group)}
-                  className="mt-3 text-blue-600 hover:text-blue-800 font-bold text-sm"
-                >
-                  + Client Ekle
-                </button>
-              )}
+              <button className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition text-sm">
+                Yönet
+              </button>
             </div>
-          ))}
-        </div>
-
-        {groups.length === 0 && (
-          <p className="text-gray-500 mt-4">Grup yok</p>
+          ))
         )}
       </div>
-    </main>
+    </div>
   );
 }

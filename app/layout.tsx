@@ -1,15 +1,21 @@
+import type { Metadata } from 'next';
 import './globals.css';
-import { ReactNode } from 'react';
 
-export const metadata = {
-  title: 'CopyPoz',
-  description: 'FX Trading Dashboard'
+export const metadata: Metadata = {
+  title: 'CopyPoz V5 - Forex Signal Copier',
+  description: 'Professional Forex Signal Copying System',
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="tr">
-      <body>{children}</body>
+      <body className="bg-gray-50">
+        {children}
+      </body>
     </html>
   );
 }

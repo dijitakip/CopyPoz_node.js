@@ -9,35 +9,32 @@ interface User {
   role: string;
   status: string;
   created_at: string;
-  auth_token?: string;
 }
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [newUser, setNewUser] = useState({
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({
     username: '',
     email: '',
     password: '',
     role: 'viewer',
   });
-  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   const fetchUsers = async () => {
     try {
-      const token = localStorage.getItem('master_token') || process.env.NEXT_PUBLIC_MASTER_TOKEN;
+      const token = localStorage.getItem('master_token') || 'master-local-123';
       const res = await fetch('/api/users', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
       });
 
-      if (!res.ok) throw new Error('Failed to fetch users');
-      const data = await res.json();
-      setUsers(data.users || []);
+      if (res.ok) {
+        const data = await res.json();
+        setUsers(data.users || []);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      console.error('Failed to fetch users:', err);
     } finally {
       setLoading(false);
     }
@@ -47,115 +44,79 @@ export default function UsersPage() {
     fetchUsers();
   }, []);
 
-  const handleCreateUser = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('master_token') || process.env.NEXT_PUBLIC_MASTER_TOKEN;
+      const token = localStorage.getItem('master_token') || 'master-local-123';
       const res = await fetch('/api/users', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(newUser),
+        body: JSON.stringify(formData),
       });
 
-      if (!res.ok) throw new Error('Failed to create user');
-      
-      setNewUser({ username: '', email: '', password: '', role: 'viewer' });
-      fetchUsers();
-      alert('Kullanıcı oluşturuldu');
+      if (res.ok) {
+        setFormData({ username: '', email: '', password: '', role: 'viewer' });
+        setShowForm(false);
+        fetchUsers();
+        alert('Kullanıcı başarıyla oluşturuldu');
+      }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Unknown error');
+      alert('Hata: ' + (err instanceof Error ? err.message : 'Bilinmeyen hata'));
     }
   };
-
-  const handleUpdateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingUser) return;
-
-    try {
-      const token = localStorage.getItem('master_token') || process.env.NEXT_PUBLIC_MASTER_TOKEN;
-      const res = await fetch(`/api/users/${editingUser.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          role: editingUser.role,
-          status: editingUser.status,
-        }),
-      });
-
-      if (!res.ok) throw new Error('Failed to update user');
-      
-      setEditingUser(null);
-      fetchUsers();
-      alert('Kullanıcı güncellendi');
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Unknown error');
-    }
-  };
-
-  const handleDeleteUser = async (id: number) => {
-    if (!confirm('Kullanıcıyı silmek istediğinizden emin misiniz?')) return;
-    
-    try {
-      const token = localStorage.getItem('master_token') || process.env.NEXT_PUBLIC_MASTER_TOKEN;
-      const res = await fetch(`/api/users/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) throw new Error('Failed to delete user');
-      fetchUsers();
-      alert('Kullanıcı silindi');
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Unknown error');
-    }
-  };
-
-  if (loading) return <div className="container"><p>Yükleniyor...</p></div>;
 
   return (
-    <main className="container">
-      <div className="card">
-        <h1>Kullanıcı Yönetimi</h1>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">Kullanıcı Yönetimi</h1>
+          <p className="text-gray-600 mt-1">Sistem kullanıcılarını yönetin</p>
+        </div>
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
+        >
+          {showForm ? '✕ İptal' : '+ Yeni Kullanıcı'}
+        </button>
+      </div>
 
-        <div className="bg-blue-50 p-4 rounded mt-4 mb-6">
-          <h2 className="font-bold mb-4">Yeni Kullanıcı Oluştur</h2>
-          <form onSubmit={handleCreateUser} className="grid grid-cols-5 gap-4">
+      {/* Form */}
+      {showForm && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Yeni Kullanıcı Oluştur</h2>
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <input
               type="text"
               placeholder="Kullanıcı Adı"
-              value={newUser.username}
-              onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-              className="border rounded px-3 py-2"
+              value={formData.username}
+              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               required
             />
             <input
               type="email"
               placeholder="Email"
-              value={newUser.email}
-              onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-              className="border rounded px-3 py-2"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               required
             />
             <input
               type="password"
               placeholder="Şifre"
-              value={newUser.password}
-              onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-              className="border rounded px-3 py-2"
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               required
             />
             <select
-              value={newUser.role}
-              onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-              className="border rounded px-3 py-2"
+              value={formData.role}
+              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             >
               <option value="viewer">Viewer</option>
               <option value="trader">Trader</option>
@@ -164,125 +125,65 @@ export default function UsersPage() {
             </select>
             <button
               type="submit"
-              className="bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700"
+              className="md:col-span-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition"
             >
               Oluştur
             </button>
           </form>
         </div>
+      )}
 
-        {error && <p className="text-red-600 mb-4">Hata: {error}</p>}
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left text-gray-500">
-            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-              <tr>
-                <th className="px-6 py-3">ID</th>
-                <th className="px-6 py-3">Kullanıcı Adı</th>
-                <th className="px-6 py-3">Email</th>
-                <th className="px-6 py-3">Rol</th>
-                <th className="px-6 py-3">Durum</th>
-                <th className="px-6 py-3">Oluşturulma</th>
-                <th className="px-6 py-3">İşlem</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.id} className="bg-white border-b hover:bg-gray-50">
-                  <td className="px-6 py-4 font-medium">{user.id}</td>
-                  <td className="px-6 py-4">{user.username}</td>
-                  <td className="px-6 py-4">{user.email}</td>
-                  <td className="px-6 py-4">
-                    <span className="px-2 py-1 rounded text-xs font-bold bg-purple-100 text-purple-800">
-                      {user.role}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded text-xs font-bold ${
-                      user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {user.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-xs">
-                    {new Date(user.created_at).toLocaleString('tr-TR')}
-                  </td>
-                  <td className="px-6 py-4 space-x-2">
-                    <button
-                      onClick={() => setEditingUser(user)}
-                      className="text-blue-600 hover:text-blue-800 font-bold"
-                    >
-                      Düzenle
-                    </button>
-                    <button
-                      onClick={() => handleDeleteUser(user.id)}
-                      className="text-red-600 hover:text-red-800 font-bold"
-                    >
-                      Sil
-                    </button>
-                  </td>
+      {/* Table */}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        {loading ? (
+          <div className="p-6 text-center text-gray-500">Yükleniyor...</div>
+        ) : users.length === 0 ? (
+          <div className="p-6 text-center text-gray-500">Kullanıcı bulunamadı</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Kullanıcı Adı</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Rol</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Durum</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Oluşturulma</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">İşlem</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {users.length === 0 && (
-          <p className="text-gray-500 mt-4">Kullanıcı yok</p>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {users.map((user) => (
+                  <tr key={user.id} className="hover:bg-gray-50 transition">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-800">{user.username}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{user.email}</td>
+                    <td className="px-6 py-4 text-sm">
+                      <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                        {user.role}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        user.status === 'active'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {user.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      {new Date(user.created_at).toLocaleDateString('tr-TR')}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <button className="text-blue-600 hover:text-blue-800 font-medium">Düzenle</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
-
-      {editingUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">Kullanıcı Düzenle</h2>
-            
-            <form onSubmit={handleUpdateUser} className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold mb-2">Rol</label>
-                <select
-                  value={editingUser.role}
-                  onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
-                >
-                  <option value="viewer">Viewer</option>
-                  <option value="trader">Trader</option>
-                  <option value="master_owner">Master Owner</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold mb-2">Durum</label>
-                <select
-                  value={editingUser.status}
-                  onChange={(e) => setEditingUser({ ...editingUser, status: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
-                >
-                  <option value="active">Aktif</option>
-                  <option value="inactive">İnaktif</option>
-                </select>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  className="flex-1 bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700"
-                >
-                  Kaydet
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditingUser(null)}
-                  className="flex-1 bg-gray-300 text-gray-800 rounded px-4 py-2 hover:bg-gray-400"
-                >
-                  İptal
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </main>
+    </div>
   );
 }
