@@ -1,6 +1,14 @@
 import Link from 'next/link';
+import { ClientService, MasterService } from '@repo/backend-core';
+import LogoutButton from './LogoutButton';
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const clients = await ClientService.listClients();
+  const masterState = await MasterService.getMasterState();
+  const positions = masterState?.positions_json ? JSON.parse(masterState.positions_json) : [];
+  const totalClients = clients.length;
+  const totalBalance = clients.reduce((sum, c) => sum + Number(c.balance), 0);
+  const openPositions = positions.length || 0;
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg p-4 mb-8">
@@ -10,9 +18,7 @@ export default function DashboardPage() {
           </Link>
           <div className="flex items-center space-x-4">
             <span className="text-white opacity-80 text-sm">Welcome, User</span>
-            <button className="text-white opacity-80 hover:opacity-100 flex items-center">
-              <span className="mr-1">🚪</span> Logout
-            </button>
+            <LogoutButton />
           </div>
         </div>
       </nav>
@@ -23,7 +29,7 @@ export default function DashboardPage() {
           <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
             <h3 className="text-gray-500 text-sm font-bold uppercase mb-2">Master Status</h3>
             <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold text-gray-800">Active</span>
+              <span className="text-2xl font-bold text-gray-800">{openPositions > 0 ? 'Active' : 'Idle'}</span>
               <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Connected</span>
             </div>
           </div>
@@ -31,19 +37,19 @@ export default function DashboardPage() {
           <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-purple-500">
             <h3 className="text-gray-500 text-sm font-bold uppercase mb-2">Clients</h3>
             <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold text-gray-800">12</span>
+              <span className="text-2xl font-bold text-gray-800">{totalClients}</span>
               <span className="text-sm text-gray-500">Connected</span>
             </div>
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
             <h3 className="text-gray-500 text-sm font-bold uppercase mb-2">Total Balance</h3>
-            <div className="text-2xl font-bold text-gray-800">$45,230.00</div>
+            <div className="text-2xl font-bold text-gray-800">${totalBalance.toLocaleString()}</div>
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-yellow-500">
             <h3 className="text-gray-500 text-sm font-bold uppercase mb-2">Open Positions</h3>
-            <div className="text-2xl font-bold text-gray-800">5</div>
+            <div className="text-2xl font-bold text-gray-800">{openPositions}</div>
           </div>
         </div>
 
@@ -53,7 +59,7 @@ export default function DashboardPage() {
           <div className="lg:col-span-2 bg-white rounded-lg shadow-md overflow-hidden">
             <div className="p-4 border-b border-gray-200 flex justify-between items-center">
               <h2 className="text-lg font-bold text-gray-800">Connected Clients</h2>
-              <button className="text-blue-600 hover:text-blue-800 text-sm font-semibold">View All</button>
+              <Link href="/admin/clients" className="text-blue-600 hover:text-blue-800 text-sm font-semibold">View All</Link>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left text-gray-500">
@@ -67,20 +73,17 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="bg-white border-b hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium text-gray-900">12345678</td>
-                    <td className="px-6 py-4">Client A</td>
-                    <td className="px-6 py-4"><span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Active</span></td>
-                    <td className="px-6 py-4">$10,000</td>
-                    <td className="px-6 py-4">2 mins ago</td>
-                  </tr>
-                  <tr className="bg-white border-b hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium text-gray-900">87654321</td>
-                    <td className="px-6 py-4">Client B</td>
-                    <td className="px-6 py-4"><span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">Paused</span></td>
-                    <td className="px-6 py-4">$5,230</td>
-                    <td className="px-6 py-4">1 hour ago</td>
-                  </tr>
+                  {clients.slice(0, 10).map((c) => (
+                    <tr key={c.id} className="bg-white border-b hover:bg-gray-50">
+                      <td className="px-6 py-4 font-medium text-gray-900">{String(c.account_number)}</td>
+                      <td className="px-6 py-4">{c.account_name}</td>
+                      <td className="px-6 py-4">
+                        <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">{c.status}</span>
+                      </td>
+                      <td className="px-6 py-4">${Number(c.balance).toLocaleString()}</td>
+                      <td className="px-6 py-4">{c.last_seen ? new Date(c.last_seen as unknown as string).toLocaleString() : '-'}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
