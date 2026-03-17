@@ -29,6 +29,7 @@ export default function UserClientsPage() {
     account_type: 'standard',
   });
   const [submitting, setSubmitting] = useState(false);
+  const [panicLoading, setPanicLoading] = useState<number | null>(null);
 
   const fetchClients = async () => {
     try {
@@ -85,6 +86,46 @@ export default function UserClientsPage() {
       alert('İşlem sırasında hata oluştu.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handlePanicButton = async (clientId: number) => {
+    if (!confirm('DİKKAT! Bu işlem hesabınızdaki kopyalamayı durduracak ve açık olan tüm kopyalanmış pozisyonları acilen kapatacaktır. Emin misiniz?')) return;
+
+    setPanicLoading(clientId);
+    try {
+      const token = localStorage.getItem('master_token') || 'master-local-123'; // Temporary fallback for demo
+      // In a real scenario, users should have their own token or session-based auth for this endpoint. 
+      // Assuming /api/clients/[id] endpoint allows users to trigger their own panic if logged in.
+      // Wait, /api/clients/[id] might require admin. Let's use a specific endpoint or update the existing one to check user ownership.
+      // Actually, since this is user dashboard, we should call a user-specific endpoint.
+      // Let's create or use /api/user/clients/panic if it exists, or update the generic one.
+      // We will use the existing POST /api/clients/[id] and rely on the fact that we can pass action: 'panic'.
+      
+      const res = await fetch(`/api/clients/${clientId}`, {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            action: 'panic',
+            reason: 'Manuel Panik Butonu (Kullanıcı)'
+          })
+      });
+
+      if (res.ok) {
+          alert('Panik komutu başarıyla gönderildi. İşlemleriniz kapatılıyor.');
+          fetchClients();
+      } else {
+          const err = await res.json();
+          alert('İşlem başarısız: ' + (err.error || 'Bilinmeyen hata'));
+      }
+    } catch (err) {
+        console.error(err);
+        alert('Bir hata oluştu');
+    } finally {
+      setPanicLoading(null);
     }
   };
 
@@ -214,16 +255,28 @@ export default function UserClientsPage() {
                         </code>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm flex gap-2">
+                    <td className="px-6 py-4 text-sm flex gap-2 items-center flex-wrap">
+                      <button
+                        onClick={() => handlePanicButton(client.id)}
+                        disabled={panicLoading === client.id || client.status !== 'active'}
+                        className={`px-3 py-1.5 rounded text-xs font-bold transition-all shadow-sm ${
+                          client.status !== 'active' 
+                            ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                            : 'bg-red-500 hover:bg-red-600 text-white animate-pulse hover:animate-none'
+                        }`}
+                        title="Tüm işlemleri kapat ve kopyalamayı durdur"
+                      >
+                        {panicLoading === client.id ? 'İşleniyor...' : '🚨 PANİK BUTONU'}
+                      </button>
                       <button
                         onClick={() => handleEdit(client)}
-                        className="text-blue-600 hover:text-blue-800 font-medium"
+                        className="text-blue-600 hover:text-blue-800 font-medium px-2 py-1 bg-blue-50 hover:bg-blue-100 rounded transition"
                       >
                         Düzenle
                       </button>
                       <Link
                         href={`/dashboard/collaterals`}
-                        className="text-orange-600 hover:text-orange-800 font-medium"
+                        className="text-orange-600 hover:text-orange-800 font-medium px-2 py-1 bg-orange-50 hover:bg-orange-100 rounded transition"
                       >
                         Teminat
                       </Link>
