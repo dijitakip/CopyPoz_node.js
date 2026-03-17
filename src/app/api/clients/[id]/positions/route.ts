@@ -57,21 +57,32 @@ export async function GET(
     });
 
     // BigInt serialization fix
-    const serializedPositions = positions.map(pos => ({
-        ...pos,
-        ticket: pos.ticket.toString(),
-        master_ticket: pos.master_ticket ? pos.master_ticket.toString() : null,
-        volume: Number(pos.volume),
-        open_price: Number(pos.open_price),
-        sl: pos.sl ? Number(pos.sl) : null,
-        tp: pos.tp ? Number(pos.tp) : null,
-        current_price: pos.current_price ? Number(pos.current_price) : null,
-        profit: pos.profit ? Number(pos.profit) : null,
-        swap: pos.swap ? Number(pos.swap) : 0,
-        commission: pos.commission ? Number(pos.commission) : 0,
-        slippage: pos.slippage ? Number(pos.slippage) : null,
-        execution_ms: pos.execution_ms ? Number(pos.execution_ms) : null,
-    }));
+    const serializedPositions = positions.map(pos => {
+        let masterTicketStr = null;
+        if (pos.master_ticket !== null && pos.master_ticket !== undefined) {
+            try {
+                masterTicketStr = pos.master_ticket.toString();
+            } catch (e) {
+                masterTicketStr = String(pos.master_ticket);
+            }
+        }
+
+        return {
+            ...pos,
+            ticket: pos.ticket.toString(),
+            master_ticket: masterTicketStr,
+            volume: Number(pos.volume),
+            open_price: Number(pos.open_price),
+            sl: pos.sl ? Number(pos.sl) : null,
+            tp: pos.tp ? Number(pos.tp) : null,
+            current_price: pos.current_price ? Number(pos.current_price) : null,
+            profit: pos.profit ? Number(pos.profit) : null,
+            swap: pos.swap ? Number(pos.swap) : 0,
+            commission: pos.commission ? Number(pos.commission) : 0,
+            slippage: pos.slippage ? Number(pos.slippage) : null,
+            execution_ms: pos.execution_ms ? Number(pos.execution_ms) : null,
+        };
+    });
 
     return NextResponse.json({ 
         ok: true, 
