@@ -28,12 +28,17 @@ export default function Header({ user: propUser, onMenuClick }: HeaderProps) {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
-        setUser(JSON.parse(storedUser));
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
       } catch (e) {
         console.error('Failed to parse user');
       }
     }
   }, [propUser]);
+
+  const userRole = user?.role?.toLowerCase() || 'viewer';
+  const isAdmin = userRole === 'admin';
+  const isMasterOwner = userRole === 'master_owner';
 
   const handleLogout = async () => {
     try {
@@ -93,18 +98,22 @@ export default function Header({ user: propUser, onMenuClick }: HeaderProps) {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/admin/users" className="cursor-pointer">
-                <User className="mr-2 h-4 w-4" />
-                <span>Profil</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/admin/settings" className="cursor-pointer">
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Ayarlar</span>
-              </Link>
-            </DropdownMenuItem>
+            {isAdmin && (
+              <DropdownMenuItem asChild>
+                <Link href={`/admin/users/${user?.id}`} className="cursor-pointer">
+                  <User className="mr-2 h-4 w-4" />
+                  <span>Profilim</span>
+                </Link>
+              </DropdownMenuItem>
+            )}
+            {(isAdmin || isMasterOwner) && (
+              <DropdownMenuItem asChild>
+                <Link href="/admin/settings" className="cursor-pointer">
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>Ayarlar</span>
+                </Link>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600 cursor-pointer">
               <LogOut className="mr-2 h-4 w-4" />
