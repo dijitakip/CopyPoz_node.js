@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,69 +7,116 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// 1. USERS TABLE
 model User {
-  id               Int       @id @default(autoincrement())
-  username         String    @unique @db.VarChar(50)
-  email            String    @unique @db.VarChar(100)
-  password_hash    String    @db.VarChar(255)
-  role             UserRole  @default(viewer)
-  status           Status    @default(active)
-  auth_token       String?   @unique @db.VarChar(255)
-  auth_token_expires DateTime?
-  created_at       DateTime  @default(now()) @db.Timestamp(0)
-  updated_at       DateTime  @default(now()) @updatedAt @db.Timestamp(0)
-
-  // Relations
-  owned_clients    Client[]  @relation("Owner")
-  assigned_clients Client[]  @relation("AssignedTo")
+  id                    Int           @id @default(autoincrement())
+  username              String        @unique @db.VarChar(50)
+  email                 String        @unique @db.VarChar(100)
+  password_hash         String        @db.VarChar(255)
+  role                  UserRole      @default(viewer)
+  status                Status        @default(active)
+  auth_token            String?       @unique @db.VarChar(255)
+  auth_token_expires    DateTime?
+  created_at            DateTime      @default(now()) @db.Timestamp(0)
+  updated_at            DateTime      @default(now()) @updatedAt @db.Timestamp(0)
+  lockout_until         DateTime?
+  login_attempts        Int           @default(0)
+  created_by            Int?
+  deleted_at            DateTime?
+  token_balance         Decimal       @default(0.00) @db.Decimal(15, 2)
+  commission_rate       Decimal       @default(10.00) @db.Decimal(5, 2)
+  referral_code         String?       @unique @db.VarChar(20)
+  referred_by_id        Int?
+  assigned_clients      Client[]      @relation("AssignedTo")
+  owned_clients         Client[]      @relation("Owner")
   master_groups_created MasterGroup[] @relation("GroupCreator")
+  system_logs           SystemLog[]
   user_tokens_created   UserToken[]   @relation("TokenCreator")
-  master_assignments    MasterGroupAssignment[] @relation("UserAssignments")
   user_tokens           UserToken[]   @relation("UserToken")
+  creator               User?         @relation("UserCreator", fields: [created_by], references: [id])
+  created_users         User[]        @relation("UserCreator")
+  referrer              User?         @relation("UserReferrals", fields: [referred_by_id], references: [id])
+  referred_users        User[]        @relation("UserReferrals")
 
-  @@map("users")
   @@index([username])
   @@index([email])
   @@index([role])
   @@index([status])
+  @@index([created_by], map: "users_created_by_fkey")
+  @@index([referred_by_id], map: "users_referred_by_id_fkey")
+  @@map("users")
 }
 
-// 2. CLIENTS TABLE
 model Client {
-  id                 Int       @id @default(autoincrement())
-  account_number     BigInt    @unique
-  account_name       String    @default("Unknown") @db.VarChar(100)
-  owner_id           Int?
-  assigned_to_user_id Int?
-  auth_token         String?   @unique @db.VarChar(255)
-  balance            Decimal   @default(0.00) @db.Decimal(15, 2)
-  equity             Decimal   @default(0.00) @db.Decimal(15, 2)
-  margin             Decimal   @default(0.00) @db.Decimal(15, 2)
-  free_margin        Decimal   @default(0.00) @db.Decimal(15, 2)
-  margin_level       Decimal   @default(0.00) @db.Decimal(10, 2)
-  open_positions     Int       @default(0)
-  status             ClientStatus @default(active)
-  last_seen          DateTime?
-  created_at         DateTime  @default(now()) @db.Timestamp(0)
-  updated_at         DateTime  @default(now()) @updatedAt @db.Timestamp(0)
+  id                   Int                     @id @default(autoincrement())
+  account_number       BigInt                  @unique
+  account_name         String                  @default("Unknown") @db.VarChar(100)
+  owner_id             Int?
+  assigned_to_user_id  Int?
+  auth_token           String?                 @unique @db.VarChar(512)
+  balance              Decimal                 @default(0.00) @db.Decimal(15, 2)
+  equity               Decimal                 @default(0.00) @db.Decimal(15, 2)
+  margin               Decimal                 @default(0.00) @db.Decimal(15, 2)
+  free_margin          Decimal                 @default(0.00) @db.Decimal(15, 2)
+  margin_level         Decimal                 @default(0.00) @db.Decimal(10, 2)
+  open_positions       Int                     @default(0)
+  status               ClientStatus            @default(active)
+  last_seen            DateTime?
+  created_at           DateTime                @default(now()) @db.Timestamp(0)
+  updated_at           DateTime                @default(now()) @updatedAt @db.Timestamp(0)
+  sync_buy             Boolean                 @default(true)
+  sync_sell            Boolean                 @default(true)
+  max_drawdown         Decimal                 @default(0.00) @db.Decimal(5, 2)
+  monthly_profit_avg   Decimal                 @default(0.00) @db.Decimal(15, 2)
+  multiplier           Decimal                 @default(1.00) @db.Decimal(10, 2)
+  risk_score           Decimal                 @default(0.00) @db.Decimal(5, 2)
+  suggested_multiplier Decimal                 @default(1.00) @db.Decimal(10, 2)
+  token_balance        Decimal                 @default(0.00) @db.Decimal(15, 2)
+  is_master            Boolean                 @default(false)
+  min_collateral_rate  Decimal                 @default(20.00) @db.Decimal(5, 2)
+  subscription_status  String                  @default("active") @db.VarChar(20)
+  password             String?                 @db.VarChar(100)
+  server               String?                 @db.VarChar(100)
+  account_type         AccountType             @default(standard)
+  assigned_to          User?                   @relation("AssignedTo", fields: [assigned_to_user_id], references: [id])
+  owner                User?                   @relation("Owner", fields: [owner_id], references: [id])
+  command_queue        CommandQueue[]
+  master_assignments   MasterGroupAssignment[]
+  master_groups_lead   MasterGroup[]           @relation("GroupMaster")
+  performance_logs     PerformanceLog[]
+  commission_reports   CommissionReport[]
+  positions            Position[]
+  system_logs          SystemLog[]             @relation("ClientLogs")
+  trader_clients       TraderClient[]
+  user_tokens          UserToken[]
 
-  // Relations
-  owner              User?     @relation("Owner", fields: [owner_id], references: [id])
-  assigned_to        User?     @relation("AssignedTo", fields: [assigned_to_user_id], references: [id])
-  command_queue      CommandQueue[]
-  master_assignments MasterGroupAssignment[]
-  trader_clients     TraderClient[]
-  user_tokens        UserToken[]
-
-  @@map("clients")
   @@index([account_number])
   @@index([auth_token])
   @@index([status])
   @@index([last_seen])
+  @@index([assigned_to_user_id], map: "clients_assigned_to_user_id_fkey")
+  @@index([owner_id], map: "clients_owner_id_fkey")
+  @@map("clients")
 }
 
-// 3. MASTER STATE TABLE
+model PerformanceLog {
+  id               Int      @id @default(autoincrement())
+  client_id        Int
+  date             DateTime @db.Date
+  balance_start    Decimal  @db.Decimal(15, 2)
+  balance_end      Decimal  @db.Decimal(15, 2)
+  equity_min       Decimal  @db.Decimal(15, 2)
+  equity_max       Decimal  @db.Decimal(15, 2)
+  drawdown_percent Decimal  @db.Decimal(5, 2)
+  profit_loss      Decimal  @db.Decimal(15, 2)
+  multiplier_used  Decimal  @db.Decimal(10, 2)
+  created_at       DateTime @default(now()) @db.Timestamp(0)
+  client           Client   @relation(fields: [client_id], references: [id], onDelete: Cascade)
+
+  @@index([client_id])
+  @@index([date])
+  @@map("performance_logs")
+}
+
 model MasterState {
   id              Int      @id @default(autoincrement())
   total_positions Int      @default(0)
@@ -82,126 +126,94 @@ model MasterState {
   @@map("master_state")
 }
 
-// 4. COMMAND QUEUE TABLE
 model CommandQueue {
-  id          Int      @id @default(autoincrement())
-  client_id   Int
-  command     String   @db.VarChar(50)
-  params      String?  @db.Text
-  status      CommandStatus @default(pending)
-  created_at  DateTime @default(now()) @db.Timestamp(0)
-  executed_at DateTime?
+  id             Int           @id @default(autoincrement())
+  client_id      Int
+  command        String        @db.VarChar(50)
+  params         String?       @db.Text
+  status         CommandStatus @default(pending)
+  created_at     DateTime      @default(now()) @db.Timestamp(0)
+  executed_at    DateTime?
+  result_message String?       @db.Text
+  client         Client        @relation(fields: [client_id], references: [id], onDelete: Cascade)
 
-  // Relations
-  client      Client   @relation(fields: [client_id], references: [id], onDelete: Cascade)
-
-  @@map("command_queue")
   @@index([client_id])
   @@index([status])
+  @@map("command_queue")
 }
 
-// 5. MASTER GROUPS TABLE
 model MasterGroup {
-  id          Int      @id @default(autoincrement())
-  name        String   @db.VarChar(100)
-  description String?  @db.Text
-  created_by  Int
-  created_at  DateTime @default(now()) @db.Timestamp(0)
-  updated_at  DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  id                    Int                     @id @default(autoincrement())
+  name                  String                  @db.VarChar(100)
+  description           String?                 @db.Text
+  created_by            Int
+  created_at            DateTime                @default(now()) @db.Timestamp(0)
+  updated_at            DateTime                @default(now()) @updatedAt @db.Timestamp(0)
+  master_client_id      Int?
+  owner_share_rate      Decimal                 @default(10.00) @db.Decimal(5, 2)
+  total_commission_rate Decimal                 @default(40.00) @db.Decimal(5, 2)
+  assignments           MasterGroupAssignment[]
+  creator               User                    @relation("GroupCreator", fields: [created_by], references: [id])
+  master_client         Client?                 @relation("GroupMaster", fields: [master_client_id], references: [id])
 
-  // Relations
-  creator     User     @relation("GroupCreator", fields: [created_by], references: [id])
-  assignments MasterGroupAssignment[]
-
+  @@index([master_client_id])
+  @@index([created_by], map: "master_groups_created_by_fkey")
   @@map("master_groups")
 }
 
-// 6. MASTER GROUP ASSIGNMENTS TABLE
 model MasterGroupAssignment {
-  id          Int      @id @default(autoincrement())
-  group_id    Int
-  master_id   Int      // References a Client acting as Master (conceptually) but linked to users logic?
-                       // Based on SQL: FOREIGN KEY (master_id) REFERENCES users(id) -- wait, master_id references USERS?
-                       // Let's re-check the SQL. 
-                       // Ah, in `master-groups-ui.php`, it seems masters are users or clients?
-                       // In `tokens.php`: "SELECT * FROM masters WHERE id = ?" -> wait, is there a masters table?
-                       // In `database_complete.sql`: No `masters` table. 
-                       // Let's check `MasterGroupAssignment` in SQL if I had read it.
-                       // I'll assume standard relation for now based on context.
-                       // Actually, looking at `tokens.php` code snippet: `$stmt = $pdo->prepare("SELECT * FROM masters WHERE id = ?");`
-                       // This suggests there MIGHT be a `masters` table not in the snippet I saw or I missed it.
-                       // BUT `database_complete.sql` was read partially.
-                       // Let's assume `master_id` refers to `users` or `clients`.
-                       // In `tokens-ui.php`: `SELECT * FROM masters` is NOT standard.
-                       // Wait, `tokens-ui.php` calls `tokens.php`.
-                       // Let's stick to what's in `database_complete.sql` or infer safely.
-                       // Re-reading `database_complete.sql` snippet...
-                       // I don't see `masters` table definition. I see `users`, `clients`, `master_groups`.
-                       // Let's assume `master_id` refers to a `Client` that is a master, OR a `User`.
-                       // However, typically in CopyPoz, a Master is often a Client account.
-                       // Let's leave it as Int for now and add relation if we confirm.
-                       // Re-reading `master_groups_assignments` (inferred name):
-                       // Let's use `client_id` for members.
-  client_id   Int
-  created_at  DateTime @default(now()) @db.Timestamp(0)
+  id         Int         @id @default(autoincrement())
+  group_id   Int
+  master_id  Int?
+  client_id  Int
+  created_at DateTime    @default(now()) @db.Timestamp(0)
+  client     Client      @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  group      MasterGroup @relation(fields: [group_id], references: [id], onDelete: Cascade)
 
-  // Relations
-  group       MasterGroup @relation(fields: [group_id], references: [id], onDelete: Cascade)
-  client      Client      @relation(fields: [client_id], references: [id], onDelete: Cascade)
-  // master      User        @relation(fields: [master_id], references: [id]) // If master is a user?
-  // Let's comment out master relation until confirmed.
-  
-  // NOTE: Assuming master_id refers to User for the relation above
-  master      User        @relation("UserAssignments", fields: [master_id], references: [id], onDelete: Cascade)
-
-  @@map("master_group_assignments")
   @@index([group_id])
   @@index([client_id])
+  @@map("master_group_assignments")
 }
 
-// 7. USER TOKENS TABLE
 model UserToken {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   user_id     Int
-  client_id   Int
-  token_value String   @unique @db.VarChar(64)
+  client_id   Int?
+  token_value String    @unique @db.VarChar(512)
   token_type  TokenType @default(CLIENT_TOKEN)
   status      Status    @default(active)
   created_by  Int
   created_at  DateTime  @default(now()) @db.Timestamp(0)
   expires_at  DateTime?
   last_used   DateTime?
+  client      Client?   @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  creator     User      @relation("TokenCreator", fields: [created_by], references: [id])
+  user        User      @relation("UserToken", fields: [user_id], references: [id], onDelete: Cascade)
 
-  // Relations
-  user        User     @relation("UserToken", fields: [user_id], references: [id], onDelete: Cascade)
-  client      Client   @relation(fields: [client_id], references: [id], onDelete: Cascade)
-  creator     User     @relation("TokenCreator", fields: [created_by], references: [id])
-
-  @@map("user_tokens")
   @@index([user_id])
   @@index([client_id])
   @@index([token_value])
   @@index([status])
+  @@index([created_by], map: "user_tokens_created_by_fkey")
+  @@map("user_tokens")
 }
 
-// 8. LICENSES TABLE
 model License {
-  id               Int       @id @default(autoincrement())
-  license_key      String    @unique @db.VarChar(50)
+  id               Int         @id @default(autoincrement())
+  license_key      String      @unique @db.VarChar(50)
   type             LicenseType @default(TRIAL)
-  status           Status    @default(active)
+  status           Status      @default(active)
   expiry_date      DateTime
-  max_clients      Int       @default(1)
+  max_clients      Int         @default(1)
   last_check_date  DateTime?
-  last_terminal_id String?   @db.VarChar(100)
-  created_at       DateTime  @default(now()) @db.Timestamp(0)
+  last_terminal_id String?     @db.VarChar(100)
+  created_at       DateTime    @default(now()) @db.Timestamp(0)
 
-  @@map("licenses")
   @@index([license_key])
   @@index([status])
+  @@map("licenses")
 }
 
-// 9. TRADER CLIENTS (Assignments)
 model TraderClient {
   id          Int      @id @default(autoincrement())
   trader_id   Int
@@ -210,51 +222,94 @@ model TraderClient {
   status      Status   @default(active)
   created_at  DateTime @default(now()) @db.Timestamp(0)
   updated_at  DateTime @default(now()) @updatedAt @db.Timestamp(0)
-
-  // Relations
-  // trader      User     @relation("Trader", fields: [trader_id], references: [id], onDelete: Cascade)
   client      Client   @relation(fields: [client_id], references: [id], onDelete: Cascade)
-  // assigner    User     @relation("Assigner", fields: [assigned_by], references: [id])
 
-  @@map("trader_clients")
   @@unique([trader_id, client_id])
   @@index([trader_id])
   @@index([client_id])
+  @@map("trader_clients")
 }
 
-// 10. PASSWORD RESETS
 model PasswordReset {
-  id          Int      @id @default(autoincrement())
-  user_id     Int
-  token       String   @unique @db.VarChar(64)
-  expires_at  DateTime
-  created_at  DateTime @default(now()) @db.Timestamp(0)
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  token      String   @unique @db.VarChar(64)
+  expires_at DateTime
+  created_at DateTime @default(now()) @db.Timestamp(0)
 
-  // Relations
-  // user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@map("password_resets")
   @@index([token])
   @@index([user_id])
+  @@map("password_resets")
 }
 
-// 11. SYSTEM LOGS
 model SystemLog {
-  id          Int      @id @default(autoincrement())
-  action      String   @db.VarChar(50)
-  details     String?  @db.Text
-  ip_address  String?  @db.VarChar(45)
-  user_id     Int?
-  level       LogLevel @default(INFO)
-  created_at  DateTime @default(now()) @db.Timestamp(0)
+  id         Int      @id @default(autoincrement())
+  action     String   @db.VarChar(50)
+  details    String?  @db.Text
+  ip_address String?  @db.VarChar(45)
+  user_id    Int?
+  level      LogLevel @default(INFO)
+  created_at DateTime @default(now()) @db.Timestamp(0)
+  client_id  Int?
+  client     Client?  @relation("ClientLogs", fields: [client_id], references: [id])
+  user       User?    @relation(fields: [user_id], references: [id])
 
-  @@map("system_logs")
   @@index([action])
   @@index([level])
   @@index([created_at])
+  @@index([client_id], map: "system_logs_client_id_fkey")
+  @@index([user_id], map: "system_logs_user_id_fkey")
+  @@map("system_logs")
 }
 
-// ENUMS
+model Position {
+  id            Int      @id @default(autoincrement())
+  client_id     Int
+  ticket        BigInt
+  symbol        String   @db.VarChar(20)
+  type          Int
+  volume        Decimal  @db.Decimal(10, 2)
+  open_price    Decimal  @db.Decimal(10, 5)
+  sl            Decimal? @db.Decimal(10, 5)
+  tp            Decimal? @db.Decimal(10, 5)
+  current_price Decimal? @db.Decimal(10, 5)
+  profit        Decimal? @db.Decimal(15, 2)
+  swap          Decimal? @default(0.00) @db.Decimal(10, 2)
+  commission    Decimal? @default(0.00) @db.Decimal(10, 2)
+  open_time     DateTime @db.Timestamp(0)
+  last_update   DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  client        Client   @relation(fields: [client_id], references: [id], onDelete: Cascade)
+
+  @@unique([client_id, ticket])
+  @@index([client_id])
+  @@map("positions")
+}
+
+model CommissionReport {
+  id                Int      @id @default(autoincrement())
+  client_id         Int
+  group_id          Int
+  month             String   @db.VarChar(7) // e.g. "2024-03"
+  total_profit      Decimal  @db.Decimal(15, 2)
+  commission_amount Decimal  @db.Decimal(15, 2)
+  owner_amount      Decimal  @db.Decimal(15, 2)
+  system_amount     Decimal  @db.Decimal(15, 2)
+  payment_status    String   @default("unpaid") @db.VarChar(20)
+  approved_at       DateTime?
+  approved_by_id    Int?
+  created_at        DateTime @default(now()) @db.Timestamp(0)
+
+  client Client @relation(fields: [client_id], references: [id], onDelete: Cascade)
+
+  @@unique([client_id, month], name: "client_id_month")
+  @@map("commission_reports")
+}
+
+enum AccountType {
+  standard
+  cent
+}
+
 enum UserRole {
   admin
   master_owner
@@ -268,6 +323,7 @@ enum Status {
 }
 
 enum ClientStatus {
+  pending
   active
   inactive
   paused
@@ -276,6 +332,7 @@ enum ClientStatus {
 
 enum CommandStatus {
   pending
+  processing
   executed
   failed
   cancelled

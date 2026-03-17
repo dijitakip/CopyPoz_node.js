@@ -10,6 +10,7 @@ export class AuthService {
   static async findUser(identifier: string) {
     return prisma.user.findFirst({
       where: {
+        deleted_at: null,
         OR: [
           { username: identifier },
           { email: identifier },
@@ -44,26 +45,60 @@ export class AuthService {
   }
 
   /**
-   * Login logic
+   * Login logic with brute-force protection
    */
   static async login(identifier: string, passwordInput: string) {
     const user = await this.findUser(identifier);
     if (!user) return null;
-    if (user.status !== 'active') return null;
+
+    // 1. Check for Account Lockout
+    if (user.lockout_until && new Date(user.lockout_until) > new Date()) {
+      const remainingMinutes = Math.ceil((new Date(user.lockout_until).getTime() - Date.now()) / (1000 * 60));
+      throw new Error(`Hesabınız çok fazla hatalı giriş denemesi nedeniyle ${remainingMinutes} dakika süreyle kilitlenmiştir.`);
+    }
+
+    // 2. Check for Active Status
+    if (user.status !== 'active') {
+      if (user.email_verified_at === null) {
+        throw new Error('Lütfen e-posta adresinizi doğrulayın.');
+      }
+      return null;
+    }
 
     const isValid = await this.verifyPassword(user, passwordInput);
-    if (!isValid) return null;
+    
+    if (!isValid) {
+      // 3. Handle Failed Attempt
+      const newAttempts = user.login_attempts + 1;
+      let lockoutUntil: Date | null = null;
+      
+      if (newAttempts >= 5) {
+        // Lock for 30 minutes after 5 attempts
+        lockoutUntil = new Date(Date.now() + 30 * 60 * 1000);
+      }
+      
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { 
+          login_attempts: newAttempts,
+          lockout_until: lockoutUntil
+        }
+      });
+      
+      return null;
+    }
 
-    // Update auth token (legacy behavior, but good for tracking)
-    // In Next.js we use HttpOnly cookies, but we can still maintain this field
-    // or just use it for EA access if needed.
+    // 4. Handle Successful Login
+    // Reset login attempts on success
     const token = createHash('sha256').update(Math.random().toString()).digest('hex');
     
     await prisma.user.update({
       where: { id: user.id },
       data: { 
         auth_token: token,
-        auth_token_expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+        auth_token_expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        login_attempts: 0,
+        lockout_until: null
       }
     });
 

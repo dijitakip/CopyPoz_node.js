@@ -1,31 +1,36 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(req: NextRequest) {
-  const session = req.cookies.get('session_user')?.value;
-  const { pathname } = req.nextUrl;
+export function middleware(request: NextRequest) {
+  const session = request.cookies.get('session_token');
+  const { pathname } = request.nextUrl;
 
-  const protectedPaths = ['/dashboard', '/admin'];
-  const isProtected = protectedPaths.some(
-    (p) => pathname === p || pathname.startsWith(p + '/')
-  );
-
-  if (isProtected && !session) {
-    const loginUrl = req.nextUrl.clone();
-    loginUrl.pathname = '/login';
-    loginUrl.searchParams.set('next', pathname);
-    return NextResponse.redirect(loginUrl);
+  // 1. Korumalı rotalar (Dashboard ve Admin)
+  if (pathname.startsWith('/dashboard') || pathname.startsWith('/admin')) {
+    if (!session) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
   }
 
-  if (pathname === '/login' && session) {
-    const dashUrl = req.nextUrl.clone();
-    dashUrl.pathname = '/dashboard';
-    return NextResponse.redirect(dashUrl);
+  // 2. Login sayfası (zaten giriş yapmışsa dashboard'a yönlendir)
+  if (pathname === '/login') {
+    if (session) {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/dashboard', '/login']
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+  ],
 };

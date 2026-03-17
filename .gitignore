@@ -25,6 +25,10 @@ yarn-error.log*
 # Local env files
 .env*.local
 .env
+.env.compose
+
+# Trae
+.trae/
 
 # Vercel
 .vercel

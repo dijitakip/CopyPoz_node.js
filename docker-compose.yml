@@ -1,21 +1,50 @@
 version: '3.8'
 
 services:
+  mysql:
+    image: mysql:8.0
+    container_name: copypoz_mysql
+    labels:
+      com.copypoz.group: "copypoz"
+      com.copypoz.service: "database"
+      com.copypoz.description: "MySQL Database for CopyPoz"
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass123
+      MYSQL_DATABASE: copypoz
+      MYSQL_USER: copypoz
+      MYSQL_PASSWORD: copypoz123
+    ports:
+      - "3306:3306"
+    volumes:
+      - copypoz_mysql_database:/var/lib/mysql
+    networks:
+      - copypoz_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+
   app:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: copypoz_app
+    labels:
+      com.copypoz.group: "copypoz"
+      com.copypoz.service: "application"
+      com.copypoz.description: "Next.js Application for CopyPoz"
     environment:
-      DATABASE_URL: mysql://copypoz:copypoz123@copypoz_mysql:3306/copypoz_v5
-      MASTER_TOKEN: ${MASTER_TOKEN:-your_secure_master_token_here}
+      DATABASE_URL: mysql://copypoz:copypoz123@copypoz_mysql:3306/copypoz
+      MASTER_TOKEN: ${MASTER_TOKEN:-master-local-123}
       SESSION_SECRET: ${SESSION_SECRET:-your_session_secret_here}
       NODE_ENV: development
       PORT: 3000
     ports:
       - "3000:3000"
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     volumes:
       - .:/app
       - /app/node_modules
@@ -23,6 +52,15 @@ services:
       - copypoz_network
     command: npm run dev
 
+volumes:
+  copypoz_mysql_database:
+    labels:
+      com.copypoz.group: "copypoz"
+      com.copypoz.type: "database"
+    driver: local
+
 networks:
   copypoz_network:
-    external: true
+    labels:
+      com.copypoz.group: "copypoz"
+    driver: bridge
