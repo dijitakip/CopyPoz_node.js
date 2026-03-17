@@ -191,6 +191,13 @@ export async function PUT(req: Request) {
         if (command.command === 'RESUME_BUY') updateData.sync_buy = true;
         if (command.command === 'PAUSE_SELL') updateData.sync_sell = false;
         if (command.command === 'RESUME_SELL') updateData.sync_sell = true;
+        
+        // Kısmi Kapanış desteği
+        if (command.command === 'CLOSE_PARTIAL') {
+          // Normalde burada partial close sonrası asıl pozisyon hacminin güncellenmesi gerekir,
+          // Ancak EA zaten heartbeat ile yeni pozisyon listesini (kalan hacimle) gönderecektir.
+          // O yüzden DB'de anlık bir pozisyon update'ine gerek yok, heartbeat'i beklemek yeterli.
+        }
 
         if (Object.keys(updateData).length > 0) {
             await prisma.client.update({

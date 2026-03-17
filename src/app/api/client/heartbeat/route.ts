@@ -182,6 +182,7 @@ export async function POST(request: Request) {
       client_id: clientId,
       auth_token: client.auth_token,
       multiplier: Number(client.multiplier || 1.0),
+      account_type: client.account_type,
       isNew,
     });
 

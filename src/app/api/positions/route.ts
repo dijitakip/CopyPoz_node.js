@@ -4,6 +4,8 @@ import { headers } from 'next/headers';
 import { verifyClientToken } from '@/src/backend/utils/jwt';
 import { RiskEngine } from '@/src/backend/services/RiskEngine';
 
+import { TradeEngine } from '@/src/backend/services/TradeEngine';
+
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
@@ -17,6 +19,7 @@ export async function GET(request: Request) {
   // Auth check - Support Master Token or Client Token
   let isAuthorized = false;
   let clientId: number | null = null;
+  let clientData: any = null;
 
   if (token === process.env.MASTER_TOKEN || token === 'master-local-123') {
     isAuthorized = true;
@@ -33,6 +36,7 @@ export async function GET(request: Request) {
       if (client) {
         isAuthorized = true;
         clientId = client.id;
+        clientData = client;
       }
     }
   }
@@ -55,13 +59,40 @@ export async function GET(request: Request) {
         });
     }
 
-    // SLIPPAGE CHECK & FILTERING
+    // SLIPPAGE CHECK & FILTERING & VOLUME CONVERSION
     let positionsToReturn = masterState.positions_json ? JSON.parse(masterState.positions_json) : [];
     
-    // If it's a specific client asking for positions (EA Sync), we could check slippage here
-    // However, since GET is usually bulk sync, we might just pass the master price 
-    // and let the EA (Client side) or a specific execution endpoint handle the strict slippage check.
-    // For now, we return master prices, and the actual opening logic (POST /api/client/trade) would check it.
+    // Eğer istek bir Client'tan geliyorsa (EA), Master hacimlerini Client'a göre ölçeklendir
+    if (clientId && clientData && positionsToReturn.length > 0) {
+      // Not: Master bakiyesini anlık alamıyorsak varsayılan veya master account verisinden çekmeliyiz.
+      // Şimdilik basitleştirmek adına Master balance'ı 1000, account_type'ı 'standard' varsayıyoruz.
+      // İdeal senaryoda Master hesap da veritabanında "is_master=true" olan bir client olarak tutulmalıdır.
+      
+      const masterClient = await prisma.client.findFirst({
+        where: { is_master: true }
+      });
+
+      if (masterClient) {
+        const masterBalance = Number(masterClient.balance) > 0 ? Number(masterClient.balance) : 1000;
+        const masterType = masterClient.account_type || 'standard';
+
+        positionsToReturn = positionsToReturn.map((pos: any) => {
+          const scaledVolume = TradeEngine.calculateDynamicVolume(
+            Number(pos.volume),
+            masterBalance,
+            masterType as 'standard' | 'cent',
+            Number(clientData.balance),
+            clientData.account_type as 'standard' | 'cent',
+            Number(clientData.multiplier || 1.0)
+          );
+
+          return {
+            ...pos,
+            volume: scaledVolume
+          };
+        });
+      }
+    }
 
     return NextResponse.json({ 
       ok: true,

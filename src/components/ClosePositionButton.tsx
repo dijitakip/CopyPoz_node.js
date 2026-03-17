@@ -14,11 +14,12 @@ export default function ClosePositionButton({
   clientId,
   command,
   params,
+  ticket, // ticket eklendi (geriye dönük uyumluluk)
   label,
   confirmMessage,
   className,
   onSuccess
-}: ClosePositionButtonProps) {
+}: ClosePositionButtonProps & { ticket?: string }) {
   const [status, setStatus] = useState<'idle' | 'pending' | 'processing' | 'success' | 'error'>('idle');
   const [commandId, setCommandId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
@@ -88,7 +89,7 @@ export default function ClosePositionButton({
         body: JSON.stringify({
             client_id: clientId,
             command,
-            params
+            params: params || ticket // params yoksa ticket kullan
         })
       });
 

@@ -406,15 +406,26 @@ export default function ClientPositionsPage() {
                     </td>
                     {canManage && (
                       <td className="px-4 py-3 text-right">
-                        <ClosePositionButton
-                          clientId={params.id as string}
-                          params={pos.ticket}
-                          command="CLOSE_POSITION"
-                          label="Kapat"
-                          confirmMessage={`${pos.symbol} ${pos.type === 0 ? 'BUY' : 'SELL'} (${pos.volume}) pozisyonunu kapatmak istediğinize emin misiniz?`}
-                          className="opacity-0 group-hover:opacity-100 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 px-3 py-1 rounded text-xs transition font-semibold"
-                          onSuccess={fetchPositions}
-                        />
+                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <ClosePositionButton
+                            clientId={params.id as string}
+                            params={JSON.stringify({ ticket: pos.ticket, volume: pos.volume / 2 })}
+                            command="CLOSE_PARTIAL"
+                            label="%50 Kapat"
+                            confirmMessage={`${pos.symbol} pozisyonunun yarısını (${(pos.volume / 2).toFixed(2)} lot) kapatmak istediğinize emin misiniz?`}
+                            className="bg-orange-50 text-orange-600 hover:bg-orange-600 hover:text-white border border-orange-200 px-2 py-1 rounded text-[10px] font-semibold"
+                            onSuccess={fetchPositions}
+                          />
+                          <ClosePositionButton
+                            clientId={params.id as string}
+                            params={pos.ticket}
+                            command="CLOSE_POSITION"
+                            label="Tamamını Kapat"
+                            confirmMessage={`${pos.symbol} ${pos.type === 0 ? 'BUY' : 'SELL'} (${pos.volume}) pozisyonunu tamamen kapatmak istediğinize emin misiniz?`}
+                            className="bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 px-2 py-1 rounded text-[10px] font-semibold"
+                            onSuccess={fetchPositions}
+                          />
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -469,14 +480,23 @@ export default function ClientPositionsPage() {
                 </div>
 
                 {canManage && (
-                    <div className="flex justify-end pt-1">
+                    <div className="flex justify-end pt-1 gap-2">
+                        <ClosePositionButton
+                            clientId={params.id as string}
+                            params={JSON.stringify({ ticket: pos.ticket, volume: pos.volume / 2 })}
+                            command="CLOSE_PARTIAL"
+                            label="%50 Kapat"
+                            confirmMessage={`${pos.symbol} pozisyonunun yarısını (${(pos.volume / 2).toFixed(2)} lot) kapatmak istediğinize emin misiniz?`}
+                            className="w-1/2 bg-orange-50 text-orange-600 border border-orange-200 py-2 rounded text-xs font-bold active:bg-orange-600 active:text-white transition"
+                            onSuccess={fetchPositions}
+                        />
                         <ClosePositionButton
                             clientId={params.id as string}
                             ticket={pos.ticket}
                             command="CLOSE_POSITION"
-                            label="Pozisyonu Kapat"
-                            confirmMessage={`${pos.symbol} pozisyonunu kapatmak istediğinize emin misiniz?`}
-                            className="w-full bg-red-50 text-red-600 border border-red-200 py-2 rounded text-sm font-bold active:bg-red-600 active:text-white transition"
+                            label="Tamamını Kapat"
+                            confirmMessage={`${pos.symbol} pozisyonunu tamamen kapatmak istediğinize emin misiniz?`}
+                            className="w-1/2 bg-red-50 text-red-600 border border-red-200 py-2 rounded text-xs font-bold active:bg-red-600 active:text-white transition"
                             onSuccess={fetchPositions}
                         />
                     </div>
