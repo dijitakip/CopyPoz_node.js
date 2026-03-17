@@ -21,7 +21,7 @@ import {
 import { Badge } from '@/src/components/ui/badge';
 import { Button } from '@/src/components/ui/button';
 import { Skeleton } from '@/src/components/ui/skeleton';
-import { Users, Monitor, Wallet, Activity, ArrowRight, ShieldCheck, Terminal, Crown } from 'lucide-react';
+import { Users, Monitor, Wallet, Activity, ArrowRight, ShieldCheck, Terminal, Crown, TrendingUp } from 'lucide-react';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -31,7 +31,8 @@ export default function DashboardPage() {
     activeClients: 0,
     totalBalance: 0,
     totalPositions: 0,
-    recentClients: [] as any[]
+    recentClients: [] as any[],
+    weeklyPerformance: [] as any[] // Yeni eklendi
   });
   const [loading, setLoading] = useState(true);
 
@@ -119,14 +120,16 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
-          <CardHeader>
-            <CardTitle>Son Aktif Clientler</CardTitle>
-            <CardDescription>
-              Platformda işlem gören son client hesapları.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        {/* Sol Sütun (Client Tablosu ve Performans) */}
+        <div className="col-span-4 space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Son Aktif Clientler</CardTitle>
+              <CardDescription>
+                Platformda işlem gören son client hesapları.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -185,7 +188,43 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-3">
+        {/* Performans Özeti Kartı */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-blue-500" /> Haftalık Performans Özeti
+            </CardTitle>
+            <CardDescription>
+              Tüm client hesaplarının son 7 günlük kâr/zarar durumu.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+               <Skeleton className="h-[200px] w-full" />
+            ) : stats.weeklyPerformance && stats.weeklyPerformance.length > 0 ? (
+               <div className="space-y-4">
+                 {stats.weeklyPerformance.map((perf, index) => (
+                   <div key={index} className="flex justify-between items-center border-b pb-2 last:border-0">
+                     <div>
+                       <div className="font-semibold text-sm">{new Date(perf.date).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'short' })}</div>
+                       <div className="text-xs text-muted-foreground">Aktif Hesap: {perf.clientCount}</div>
+                     </div>
+                     <div className={`font-bold ${perf.totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                       {perf.totalProfit >= 0 ? '+' : ''}${perf.totalProfit.toFixed(2)}
+                     </div>
+                   </div>
+                 ))}
+               </div>
+            ) : (
+               <div className="text-center text-muted-foreground py-8">
+                 Henüz performans verisi oluşmamış. Gün sonlarında sistem otomatik kaydedecektir.
+               </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="col-span-3">
           <CardHeader>
             <CardTitle>Hızlı İşlemler</CardTitle>
             <CardDescription>

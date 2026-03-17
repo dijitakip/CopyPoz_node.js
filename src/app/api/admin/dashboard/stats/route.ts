@@ -46,6 +46,34 @@ export async function GET() {
       balance: Number(c.balance)
     }));
 
+    // Son 7 günün performans özeti
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const performanceLogs = await prisma.performanceLog.groupBy({
+      by: ['date'],
+      where: {
+        date: {
+          gte: sevenDaysAgo
+        }
+      },
+      _sum: {
+        profit_loss: true
+      },
+      _count: {
+        client_id: true
+      },
+      orderBy: {
+        date: 'desc'
+      }
+    });
+
+    const weeklyPerformance = performanceLogs.map(log => ({
+      date: log.date.toISOString(),
+      totalProfit: Number(log._sum.profit_loss || 0),
+      clientCount: log._count.client_id
+    }));
+
     return NextResponse.json({
       ok: true,
       stats: {
@@ -53,7 +81,8 @@ export async function GET() {
         activeClients,
         totalBalance: Number(balanceSum._sum.balance || 0),
         totalPositions: Number(totalPositions._sum.open_positions || 0),
-        recentClients: serializedClients
+        recentClients: serializedClients,
+        weeklyPerformance
       }
     });
   } catch (e) {
