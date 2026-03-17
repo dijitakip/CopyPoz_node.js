@@ -60,6 +60,7 @@ export async function GET(
     const serializedPositions = positions.map(pos => ({
         ...pos,
         ticket: pos.ticket.toString(),
+        master_ticket: pos.master_ticket ? pos.master_ticket.toString() : null,
         volume: Number(pos.volume),
         open_price: Number(pos.open_price),
         sl: pos.sl ? Number(pos.sl) : null,
@@ -68,6 +69,7 @@ export async function GET(
         profit: pos.profit ? Number(pos.profit) : null,
         swap: pos.swap ? Number(pos.swap) : 0,
         commission: pos.commission ? Number(pos.commission) : 0,
+        slippage: pos.slippage ? Number(pos.slippage) : null,
     }));
 
     return NextResponse.json({ 

@@ -17,6 +17,9 @@ interface Position {
   current_price: number | null;
   profit: number | null;
   open_time: string;
+  master_ticket?: string | null;
+  execution_ms?: number | null;
+  slippage?: number | null;
 }
 
 export default function ClientPositionsPage() {
@@ -371,6 +374,7 @@ export default function ClientPositionsPage() {
                 <th className="px-4 py-3">Anlık</th>
                 <th className="px-4 py-3 cursor-pointer hover:bg-gray-100 transition" onClick={() => handleSort('profit')}>Kâr/Zarar {sortBy === 'profit' && (sortOrder === 'asc' ? '↑' : '↓')}</th>
                 <th className="px-4 py-3 cursor-pointer hover:bg-gray-100 transition" onClick={() => handleSort('open_time')}>Zaman {sortBy === 'open_time' && (sortOrder === 'asc' ? '↑' : '↓')}</th>
+                <th className="px-4 py-3">Performans (Gecikme/Kayma)</th>
                 {canManage && <th className="px-4 py-3 text-right">İşlem</th>}
               </tr>
             </thead>
@@ -403,6 +407,25 @@ export default function ClientPositionsPage() {
                     </td>
                     <td className="px-4 py-3 text-gray-500 text-[10px]">
                       {new Date(pos.open_time).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td className="px-4 py-3 text-[10px]">
+                      {pos.master_ticket ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-gray-500">Master: #{pos.master_ticket}</span>
+                          {pos.execution_ms !== null && (
+                            <span className={pos.execution_ms > 1000 ? 'text-red-500 font-bold' : 'text-green-600'}>
+                              ⏱️ {pos.execution_ms} ms
+                            </span>
+                          )}
+                          {pos.slippage !== null && (
+                            <span className={Math.abs(pos.slippage) > 3 ? 'text-red-500 font-bold' : 'text-blue-600'}>
+                              📉 {pos.slippage > 0 ? '+' : ''}{pos.slippage.toFixed(1)} pip
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 italic">Manuel / Bilinmiyor</span>
+                      )}
                     </td>
                     {canManage && (
                       <td className="px-4 py-3 text-right">
@@ -478,6 +501,24 @@ export default function ClientPositionsPage() {
                         <span className="font-medium text-gray-700">{pos.current_price?.toFixed(5) || '-'}</span>
                     </div>
                 </div>
+
+                {/* Mobil Görünüm: Performans Metrikleri */}
+                {pos.master_ticket && (
+                  <div className="flex gap-4 text-xs bg-blue-50/50 p-2 rounded border border-blue-100">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-gray-500 uppercase">Gecikme:</span>
+                      <span className={`font-bold ${pos.execution_ms && pos.execution_ms > 1000 ? 'text-red-500' : 'text-green-600'}`}>
+                        {pos.execution_ms || 0} ms
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-gray-500 uppercase">Kayma:</span>
+                      <span className={`font-bold ${pos.slippage && Math.abs(pos.slippage) > 3 ? 'text-red-500' : 'text-blue-600'}`}>
+                        {pos.slippage ? `${pos.slippage > 0 ? '+' : ''}${pos.slippage.toFixed(1)} pip` : '0 pip'}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 {canManage && (
                     <div className="flex justify-end pt-1 gap-2">

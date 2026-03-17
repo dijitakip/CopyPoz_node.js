@@ -211,7 +211,10 @@ export async function POST(request: Request) {
                     swap: pos.swap ? parseFloat(pos.swap) : 0,
                     commission: pos.commission ? parseFloat(pos.commission) : 0,
                     open_time: new Date(pos.open_time * 1000),
-                    is_closed: false
+                    is_closed: false,
+                    master_ticket: pos.master_ticket ? BigInt(pos.master_ticket) : null,
+                    execution_ms: pos.execution_ms ? parseInt(pos.execution_ms) : null,
+                    slippage: pos.slippage ? parseFloat(pos.slippage) : null,
                   }
                 });
               }

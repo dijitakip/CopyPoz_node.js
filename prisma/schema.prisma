@@ -280,6 +280,9 @@ model Position {
   close_time    DateTime? @db.Timestamp(0)
   close_price   Decimal? @db.Decimal(10, 5)
   is_closed     Boolean  @default(false)
+  master_ticket BigInt?  // Hangi master işleminin kopyası
+  execution_ms  Int?     // Master'dan sonra kaç milisaniyede açıldı
+  slippage      Decimal? @db.Decimal(10, 5) // Fiyat kayması (pips veya raw)
   last_update   DateTime @default(now()) @updatedAt @db.Timestamp(0)
   client        Client   @relation(fields: [client_id], references: [id], onDelete: Cascade)
 
