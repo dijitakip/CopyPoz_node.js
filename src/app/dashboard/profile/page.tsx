@@ -23,7 +23,10 @@ import {
   Calendar, 
   Loader2, 
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  EyeOff,
+  ShieldAlert
 } from 'lucide-react';
 
 export default function ProfilePage() {
@@ -33,6 +36,10 @@ export default function ProfilePage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -40,6 +47,25 @@ export default function ProfilePage() {
     newPassword: '',
     confirmPassword: '',
   });
+
+  const validatePassword = (pass: string) => {
+    const minLength = pass.length >= 8;
+    const hasUpper = /[A-Z]/.test(pass);
+    const hasLower = /[a-z]/.test(pass);
+    const hasNumber = /[0-9]/.test(pass);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(pass);
+    
+    return {
+      minLength,
+      hasUpper,
+      hasLower,
+      hasNumber,
+      hasSpecial,
+      isValid: minLength && hasUpper && hasLower && hasNumber && hasSpecial
+    };
+  };
+
+  const passwordStrength = validatePassword(formData.newPassword);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -87,9 +113,20 @@ export default function ProfilePage() {
     setError('');
     setSuccess('');
 
-    if (formData.newPassword && formData.newPassword !== formData.confirmPassword) {
-      setError('Yeni şifreler uyuşmuyor.');
+    if (!formData.currentPassword) {
+      setError('Değişiklikleri kaydetmek için mevcut şifrenizi girmelisiniz.');
       return;
+    }
+
+    if (formData.newPassword) {
+      if (!passwordStrength.isValid) {
+        setError('Yeni şifre güvenlik standartlarını karşılamıyor.');
+        return;
+      }
+      if (formData.newPassword !== formData.confirmPassword) {
+        setError('Yeni şifreler uyuşmuyor.');
+        return;
+      }
     }
 
     setUpdating(true);
@@ -101,6 +138,7 @@ export default function ProfilePage() {
         body: JSON.stringify({
           username: formData.username,
           email: formData.email,
+          currentPassword: formData.currentPassword || undefined,
           password: formData.newPassword || undefined,
         }),
       });
@@ -222,28 +260,102 @@ export default function ProfilePage() {
 
               <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
                 <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
-                  <Lock className="h-4 w-4" /> Şifre Değiştir
+                  <Lock className="h-4 w-4" /> Şifre İşlemleri
                 </h3>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="new-password">Yeni Şifre (Değiştirmek istemiyorsanız boş bırakın)</Label>
-                    <Input 
-                      id="new-password" 
-                      type="password"
-                      value={formData.newPassword}
-                      onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
-                      placeholder="••••••••" 
-                    />
+                    <Label htmlFor="current-password">Mevcut Şifre (Değişiklikleri onaylamak için zorunlu)</Label>
+                    <div className="relative">
+                      <Input 
+                        id="current-password" 
+                        type={showCurrentPassword ? "text" : "password"}
+                        value={formData.currentPassword}
+                        onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
+                        placeholder="••••••••" 
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      >
+                        {showCurrentPassword ? <EyeOff className="h-4 w-4 text-gray-500" /> : <Eye className="h-4 w-4 text-gray-500" />}
+                      </Button>
+                    </div>
                   </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="new-password">Yeni Şifre</Label>
+                    <div className="relative">
+                      <Input 
+                        id="new-password" 
+                        type={showNewPassword ? "text" : "password"}
+                        value={formData.newPassword}
+                        onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
+                        placeholder="••••••••" 
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                      >
+                        {showNewPassword ? <EyeOff className="h-4 w-4 text-gray-500" /> : <Eye className="h-4 w-4 text-gray-500" />}
+                      </Button>
+                    </div>
+                    {formData.newPassword && (
+                      <div className="mt-2 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-100 dark:border-slate-800 space-y-2">
+                        <p className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
+                          <ShieldAlert className="h-3 w-3" /> Şifre Güvenlik Kriterleri
+                        </p>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                          <div className={`text-[11px] flex items-center gap-1.5 ${passwordStrength.minLength ? 'text-emerald-600' : 'text-slate-400'}`}>
+                            <div className={`h-1.5 w-1.5 rounded-full ${passwordStrength.minLength ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                            En az 8 karakter
+                          </div>
+                          <div className={`text-[11px] flex items-center gap-1.5 ${passwordStrength.hasUpper ? 'text-emerald-600' : 'text-slate-400'}`}>
+                            <div className={`h-1.5 w-1.5 rounded-full ${passwordStrength.hasUpper ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                            Büyük harf (A-Z)
+                          </div>
+                          <div className={`text-[11px] flex items-center gap-1.5 ${passwordStrength.hasLower ? 'text-emerald-600' : 'text-slate-400'}`}>
+                            <div className={`h-1.5 w-1.5 rounded-full ${passwordStrength.hasLower ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                            Küçük harf (a-z)
+                          </div>
+                          <div className={`text-[11px] flex items-center gap-1.5 ${passwordStrength.hasNumber ? 'text-emerald-600' : 'text-slate-400'}`}>
+                            <div className={`h-1.5 w-1.5 rounded-full ${passwordStrength.hasNumber ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                            Rakam (0-9)
+                          </div>
+                          <div className={`text-[11px] flex items-center gap-1.5 ${passwordStrength.hasSpecial ? 'text-emerald-600' : 'text-slate-400'}`}>
+                            <div className={`h-1.5 w-1.5 rounded-full ${passwordStrength.hasSpecial ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                            Özel karakter (!@#$..)
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="confirm-password">Yeni Şifre Tekrar</Label>
-                    <Input 
-                      id="confirm-password" 
-                      type="password"
-                      value={formData.confirmPassword}
-                      onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                      placeholder="••••••••" 
-                    />
+                    <div className="relative">
+                      <Input 
+                        id="confirm-password" 
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={formData.confirmPassword}
+                        onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                        placeholder="••••••••" 
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4 text-gray-500" /> : <Eye className="h-4 w-4 text-gray-500" />}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>

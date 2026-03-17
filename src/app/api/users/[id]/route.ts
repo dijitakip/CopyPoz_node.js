@@ -55,7 +55,12 @@ export async function PUT(
   try {
     const id = parseInt(params.id);
     const body = await request.json();
-    let { username, email, password, role, status } = body;
+    let { username, email, password, currentPassword, role, status } = body;
+
+    const userToUpdate = await prisma.user.findUnique({ where: { id } });
+    if (!userToUpdate) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
 
     // Admin değilse, rolünü ve statüsünü değiştiremez
     if (currentUser.role !== 'admin') {
@@ -65,6 +70,17 @@ export async function PUT(
       // Admin değilse, sadece kendi bilgilerini güncelleyebilir
       if (currentUser.id !== id) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+
+      // Herhangi bir güncelleme için mevcut şifre kontrolü zorunlu (Güvenlik Standardı)
+      if (!currentPassword) {
+        return NextResponse.json({ error: 'Değişiklikleri kaydetmek için mevcut şifrenizi girmelisiniz.' }, { status: 400 });
+      }
+
+      const bcrypt = await import('bcryptjs');
+      const isMatch = await bcrypt.compare(currentPassword, userToUpdate.password_hash);
+      if (!isMatch) {
+        return NextResponse.json({ error: 'Mevcut şifreniz hatalı.' }, { status: 400 });
       }
     }
 
