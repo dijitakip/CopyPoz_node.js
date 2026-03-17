@@ -44,7 +44,7 @@ export async function GET(
     const isOwner = user ? (client?.owner_id === user.id || client?.assigned_to_user_id === user.id) : false;
 
     // Eğer admin değilse ve master token değilse, sahiplik kontrolü yap
-    if (!isMasterToken && user?.role !== 'admin' && user?.role !== 'master_owner' && !isOwner) {
+    if (!isMasterToken && user?.role !== 'admin' && user?.role !== 'master_owner' && !isOwner && user?.role !== 'trader') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

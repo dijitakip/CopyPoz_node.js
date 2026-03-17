@@ -154,10 +154,10 @@ export default function ClientPositionsPage() {
 
   // Trader rolü için ek kısıtlama: İşlem yapamaz
   // Ancak kendi client'ı ise sync işlemlerini yapabilir
-  // isOwner bilgisi backend'den dönmüyorsa bile "client" rolü kendi hesabını görebilir.
+  // isOwner bilgisi backend'den dönmüyorsa bile "trader" veya "viewer" rolü kendi hesabını görebilir.
   // Ancak admin/master_owner dışındakiler için backend is_owner'ı true dönmelidir.
-  const canManage = userRole === 'admin' || userRole === 'master_owner' || isOwner || userRole === 'client';
-  const canSync = canManage || (userRole === 'trader' && isOwner) || userRole === 'client';
+  const canManage = userRole === 'admin' || userRole === 'master_owner' || isOwner || userRole === 'trader';
+  const canSync = canManage || (userRole === 'trader' && isOwner) || userRole === 'trader';
 
   const handleSort = (field: string) => {
     if (sortBy === field) {

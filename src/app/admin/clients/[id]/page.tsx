@@ -137,7 +137,7 @@ export default function ClientDetailPage() {
             <p className="text-gray-500">ID: {client.id}</p>
         </div>
         <div className="flex gap-2">
-            {(userRole === 'admin' || userRole === 'master_owner' || userRole === 'client') && (
+            {(userRole === 'admin' || userRole === 'master_owner' || userRole === 'trader') && (
                 <button 
                     onClick={handlePanicButton}
                     disabled={panicLoading || client.status !== 'active'}
