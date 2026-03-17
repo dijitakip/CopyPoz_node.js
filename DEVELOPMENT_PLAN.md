@@ -46,6 +46,7 @@ Projenin sadece işlevsel değil, aynı zamanda görsel olarak güven veren, mod
 1.  `shadcn/ui` kurulumu ve temel bileşenlerin (Button, Card, Input, Table, Dialog, Sheet) projeye eklenmesi.
 2.  Mevcut sayfaların (Login, Dashboard, Tables) bu yeni bileşenlerle "Refactor" edilmesi.
 3.  Karanlık Mod (Dark Mode) desteğinin eklenmesi.
+4.  **Kullanıcı Profil Yönetimi**: Şifre değiştirme, kullanıcı adı ve e-posta güncelleme özelliklerinin (Dashboard/Profile) tüm kullanıcılara açılması.
 
 ---
 

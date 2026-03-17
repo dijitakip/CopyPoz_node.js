@@ -69,6 +69,11 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
       icon: Share2,
       href: '/dashboard/referrals',
     },
+    {
+      label: 'Profilim',
+      icon: User,
+      href: '/dashboard/profile',
+    },
   ];
 
   if (userRole === 'admin' || userRole === 'master_owner' || userRole === 'trader') {

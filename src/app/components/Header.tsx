@@ -98,14 +98,12 @@ export default function Header({ user: propUser, onMenuClick }: HeaderProps) {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {isAdmin && (
-              <DropdownMenuItem asChild>
-                <Link href={`/admin/users/${user?.id}`} className="cursor-pointer">
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Profilim</span>
-                </Link>
-              </DropdownMenuItem>
-            )}
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/profile" className="cursor-pointer">
+                <User className="mr-2 h-4 w-4" />
+                <span>Profilim</span>
+              </Link>
+            </DropdownMenuItem>
             {(isAdmin || isMasterOwner) && (
               <DropdownMenuItem asChild>
                 <Link href="/admin/settings" className="cursor-pointer">
