@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/src/backend/utils/db';
 import { headers } from 'next/headers';
 import { verifyClientToken } from '@/src/backend/utils/jwt';
-
-
+import { RiskEngine } from '@/src/backend/services/RiskEngine';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,18 +16,24 @@ export async function GET(request: Request) {
 
   // Auth check - Support Master Token or Client Token
   let isAuthorized = false;
+  let clientId: number | null = null;
+
   if (token === process.env.MASTER_TOKEN || token === 'master-local-123') {
     isAuthorized = true;
   } else {
     const decoded = verifyClientToken(token);
     if (decoded) {
       isAuthorized = true;
+      // We would ideally extract client id from token if we structured it that way
     } else {
       // Check for simple token in database
       const client = await prisma.client.findFirst({
         where: { auth_token: token }
       });
-      if (client) isAuthorized = true;
+      if (client) {
+        isAuthorized = true;
+        clientId = client.id;
+      }
     }
   }
 
@@ -50,10 +55,18 @@ export async function GET(request: Request) {
         });
     }
 
+    // SLIPPAGE CHECK & FILTERING
+    let positionsToReturn = masterState.positions_json ? JSON.parse(masterState.positions_json) : [];
+    
+    // If it's a specific client asking for positions (EA Sync), we could check slippage here
+    // However, since GET is usually bulk sync, we might just pass the master price 
+    // and let the EA (Client side) or a specific execution endpoint handle the strict slippage check.
+    // For now, we return master prices, and the actual opening logic (POST /api/client/trade) would check it.
+
     return NextResponse.json({ 
       ok: true,
       total_positions: masterState.total_positions,
-      positions: masterState.positions_json ? JSON.parse(masterState.positions_json) : [],
+      positions: positionsToReturn,
       updated_at: Math.floor(masterState.updated_at.getTime() / 1000) // MT5 expects seconds
     });
   } catch (error) {

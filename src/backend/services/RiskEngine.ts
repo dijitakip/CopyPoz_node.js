@@ -62,6 +62,27 @@ export class RiskEngine {
   }
 
   /**
+   * Slippage (Kayma) & Execution Risk Kontrolü
+   * Master işlem açtığında, Client'a ulaşma süresi ve fiyat farkını kontrol eder.
+   */
+  static async checkSlippage(masterPrice: number, clientPrice: number, maxAllowedSlippagePips: number = 3) {
+    // Fiyat farkını pips cinsinden hesapla (Örn: EURUSD için 1 pip = 0.0001)
+    // Şimdilik basit bir mutlak fark kontrolü yapıyoruz. İleride sembol bazlı pip değeri hesaplanabilir.
+    const priceDifference = Math.abs(masterPrice - clientPrice);
+    
+    // Varsayılan olarak 1 pip'i 0.0001 olarak kabul edelim (Forex majör pariteler için)
+    // Eğer XAUUSD veya JPY paritesi ise bu katsayı 0.01 olmalıdır (Bunu sembole göre dinamik yapmak gerekir)
+    const pipsDifference = priceDifference / 0.0001;
+
+    if (pipsDifference > maxAllowedSlippagePips) {
+      console.warn(`[SLIPPAGE WARNING] İşlem reddedildi. Fark: ${pipsDifference.toFixed(2)} pips (Max: ${maxAllowedSlippagePips})`);
+      return { allowed: false, difference: pipsDifference };
+    }
+
+    return { allowed: true, difference: pipsDifference };
+  }
+
+  /**
    * Calculate risk score and suggest multiplier based on performance history
    */
   static async analyzeClient(clientId: number) {

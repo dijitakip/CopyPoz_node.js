@@ -186,6 +186,7 @@ export async function PUT(req: Request) {
         const updateData: any = {};
         if (command.command === 'PAUSE') updateData.status = 'paused';
         if (command.command === 'RESUME') updateData.status = 'active';
+        if (command.command === 'CLOSE_ALL') updateData.status = 'inactive'; // Panik sonrası pasif kalmalı
         if (command.command === 'PAUSE_BUY') updateData.sync_buy = false;
         if (command.command === 'RESUME_BUY') updateData.sync_buy = true;
         if (command.command === 'PAUSE_SELL') updateData.sync_sell = false;
