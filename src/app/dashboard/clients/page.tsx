@@ -275,6 +275,12 @@ export default function UserClientsPage() {
                         Düzenle
                       </button>
                       <Link
+                        href={`/admin/clients/${client.id}/positions`}
+                        className="text-purple-600 hover:text-purple-800 font-medium px-2 py-1 bg-purple-50 hover:bg-purple-100 rounded transition"
+                      >
+                        Pozisyonlar
+                      </Link>
+                      <Link
                         href={`/dashboard/collaterals`}
                         className="text-orange-600 hover:text-orange-800 font-medium px-2 py-1 bg-orange-50 hover:bg-orange-100 rounded transition"
                       >

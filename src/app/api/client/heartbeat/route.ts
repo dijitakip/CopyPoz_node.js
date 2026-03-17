@@ -142,31 +142,79 @@ export async function POST(request: Request) {
         });
     }
 
-    // 4. Update Positions
+    // 4. Update Positions (And handle history)
     if (positions && Array.isArray(positions)) {
         await prisma.$transaction(async (tx) => {
-            await tx.position.deleteMany({
-                where: { client_id: clientId }
+            // Aktif pozisyonları tespit et (silinenleri history'e almak veya is_closed işaretlemek için)
+            // Mevcut açık pozisyonların biletlerini al
+            const currentPositions = await tx.position.findMany({
+              where: { client_id: clientId, is_closed: false },
+              select: { ticket: true }
             });
+            const currentTickets = currentPositions.map(p => Number(p.ticket));
+            const newTickets = positions.map((p: any) => Number(p.ticket));
 
-            if (positions.length > 0) {
-                await tx.position.createMany({
-                    data: positions.map((pos: any) => ({
-                        client_id: clientId,
-                        ticket: BigInt(pos.ticket),
-                        symbol: pos.symbol,
-                        type: parseInt(pos.type),
-                        volume: parseFloat(pos.volume),
-                        open_price: parseFloat(pos.open_price || pos.price),
-                        sl: pos.sl ? parseFloat(pos.sl) : null,
-                        tp: pos.tp ? parseFloat(pos.tp) : null,
-                        current_price: pos.current_price ? parseFloat(pos.current_price) : null,
-                        profit: pos.profit ? parseFloat(pos.profit) : null,
-                        swap: pos.swap ? parseFloat(pos.swap) : 0,
-                        commission: pos.commission ? parseFloat(pos.commission) : 0,
-                        open_time: new Date(pos.open_time * 1000)
-                    }))
+            // Kapanan pozisyonları tespit et ve is_closed = true yap
+            const closedTickets = currentTickets.filter(t => !newTickets.includes(t));
+            if (closedTickets.length > 0) {
+              await tx.position.updateMany({
+                where: { 
+                  client_id: clientId, 
+                  ticket: { in: closedTickets.map(t => BigInt(t)) } 
+                },
+                data: {
+                  is_closed: true,
+                  close_time: new Date()
+                }
+              });
+            }
+
+            // Yeni veya güncellenen pozisyonları işle
+            for (const pos of positions) {
+              const ticketBigInt = BigInt(pos.ticket);
+              const exists = await tx.position.findUnique({
+                where: {
+                  client_id_ticket: {
+                    client_id: clientId,
+                    ticket: ticketBigInt
+                  }
+                }
+              });
+
+              if (exists) {
+                // Güncelle
+                await tx.position.update({
+                  where: { id: exists.id },
+                  data: {
+                    current_price: pos.current_price ? parseFloat(pos.current_price) : null,
+                    profit: pos.profit ? parseFloat(pos.profit) : null,
+                    swap: pos.swap ? parseFloat(pos.swap) : 0,
+                    volume: parseFloat(pos.volume), // Kısmi kapanış için volume güncellenmeli
+                    sl: pos.sl ? parseFloat(pos.sl) : null,
+                    tp: pos.tp ? parseFloat(pos.tp) : null,
+                  }
                 });
+              } else {
+                // Yeni Ekle
+                await tx.position.create({
+                  data: {
+                    client_id: clientId,
+                    ticket: ticketBigInt,
+                    symbol: pos.symbol,
+                    type: parseInt(pos.type),
+                    volume: parseFloat(pos.volume),
+                    open_price: parseFloat(pos.open_price || pos.price),
+                    sl: pos.sl ? parseFloat(pos.sl) : null,
+                    tp: pos.tp ? parseFloat(pos.tp) : null,
+                    current_price: pos.current_price ? parseFloat(pos.current_price) : null,
+                    profit: pos.profit ? parseFloat(pos.profit) : null,
+                    swap: pos.swap ? parseFloat(pos.swap) : 0,
+                    commission: pos.commission ? parseFloat(pos.commission) : 0,
+                    open_time: new Date(pos.open_time * 1000),
+                    is_closed: false
+                  }
+                });
+              }
             }
         });
     }

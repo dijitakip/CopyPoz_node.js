@@ -49,7 +49,10 @@ export async function GET(
     }
 
     const positions = await prisma.position.findMany({
-      where: { client_id: clientId },
+      where: { 
+        client_id: clientId,
+        is_closed: false // Sadece aktif (açık) pozisyonları getir
+      },
       orderBy: { open_time: 'desc' }
     });
 
