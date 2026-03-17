@@ -36,7 +36,6 @@ export default function ProfilePage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -265,24 +264,17 @@ export default function ProfilePage() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="current-password">Mevcut Şifre (Değişiklikleri onaylamak için zorunlu)</Label>
-                    <div className="relative">
-                      <Input 
-                        id="current-password" 
-                        type={showCurrentPassword ? "text" : "password"}
-                        value={formData.currentPassword}
-                        onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
-                        placeholder="••••••••" 
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                      >
-                        {showCurrentPassword ? <EyeOff className="h-4 w-4 text-gray-500" /> : <Eye className="h-4 w-4 text-gray-500" />}
-                      </Button>
-                    </div>
+                    <Input 
+                      id="current-password" 
+                      type="password"
+                      value={formData.currentPassword}
+                      onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
+                      placeholder="••••••••" 
+                      autoComplete="current-password"
+                    />
+                    <p className="text-[10px] text-muted-foreground italic">
+                      Güvenlik gereği mevcut şifreniz hiçbir koşulda görüntülenmez.
+                    </p>
                   </div>
 
                   <div className="space-y-2">
