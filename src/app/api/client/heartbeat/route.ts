@@ -128,10 +128,18 @@ export async function POST(request: Request) {
     // 3. Check Subscription
     const active = await isSubscriptionActive(clientId);
     if (!active) {
+        // Heartbeat'in reddedilmesi yerine sadece sync_enabled: false dönüyoruz
+        // Böylece EA bakiye ve pozisyonları güncellemeye devam eder ama kopyalama yapmaz
         return NextResponse.json({ 
-            error: 'Subscription suspended or insufficient collateral.',
-            sync_enabled: false 
-        }, { status: 403 });
+            ok: true,
+            sync_enabled: false,
+            message: 'Subscription suspended or insufficient collateral.',
+            client_id: clientId,
+            auth_token: client.auth_token,
+            multiplier: Number(client.multiplier || 1.0),
+            account_type: client.account_type,
+            isNew,
+        });
     }
 
     // 4. Update Positions

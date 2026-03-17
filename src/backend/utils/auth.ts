@@ -105,7 +105,11 @@ export async function isSubscriptionActive(clientId: number): Promise<boolean> {
   if (!client) return false;
   
   // 1. Check for manual status (paused/suspended)
-  if (client.status === 'paused' || client.status === 'suspended') return false;
+  // EA tarafında pause olması subscription'ı tamamen kapatmamalı, sadece sync durmalı. 
+  // Ama heartbeat'in reddedilmesi EA tarafında 403 hatasına neden oluyor.
+  // Bu nedenle status='paused' durumunu heartbeat'i bloke edecek bir şey olarak görmemeliyiz.
+  // Heartbeat çalışmaya devam etmeli ama 'sync_enabled: false' dönmeli ki EA kopyalama yapmasın.
+  if (client.status === 'suspended') return false;
 
   // 2. Check for Jeton Collateral (Minimum %20)
   const collateral = await TokenService.checkCollateral(clientId);
@@ -117,5 +121,6 @@ export async function isSubscriptionActive(clientId: number): Promise<boolean> {
   // 3. Subscription Status
   if (client.subscription_status === 'active') return true;
   
-  return false;
+  // Varsayılan olarak eğer jeton teminatı yeterliyse aktif kabul et.
+  return true;
 }
