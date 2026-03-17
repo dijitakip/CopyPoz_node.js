@@ -3,6 +3,17 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { Button } from '@/src/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/src/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/src/components/ui/avatar';
+import { Bell, Menu, LogOut, User, Settings } from 'lucide-react';
 
 interface HeaderProps {
   user: any;
@@ -11,7 +22,6 @@ interface HeaderProps {
 
 export default function Header({ user: propUser, onMenuClick }: HeaderProps) {
   const router = useRouter();
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const [user, setUser] = useState<any>(propUser);
 
   useEffect(() => {
@@ -25,90 +35,83 @@ export default function Header({ user: propUser, onMenuClick }: HeaderProps) {
     }
   }, [propUser]);
 
-  const handleLogout = async (e?: React.MouseEvent) => {
-    if (e) e.preventDefault();
-    console.log('Logout clicked');
-    setShowUserMenu(false);
-    
+  const handleLogout = async () => {
     try {
-      console.log('Calling logout API...');
       await fetch('/api/auth/logout', { method: 'POST' });
-      console.log('Logout API success');
     } catch (e) {
       console.error('Logout API error:', e);
     }
     
     localStorage.removeItem('user');
     localStorage.removeItem('master_token');
-    console.log('Redirecting to login...');
     router.push('/login');
     router.refresh();
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+    <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3 flex items-center justify-between sticky top-0 z-40 shadow-sm">
       {/* Left */}
       <div className="flex items-center gap-4">
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={onMenuClick}
-          className="p-2 hover:bg-gray-100 rounded-lg transition lg:hidden"
+          className="lg:hidden"
         >
-          ☰
-        </button>
-        <h1 className="text-xl font-semibold text-gray-800">CopyPoz V5</h1>
+          <Menu className="h-6 w-6" />
+        </Button>
+        <h1 className="text-xl font-semibold text-slate-800 dark:text-slate-100 hidden sm:block">Dashboard</h1>
       </div>
 
       {/* Right */}
       <div className="flex items-center gap-4">
         {/* Notifications */}
-        <button className="p-2 hover:bg-gray-100 rounded-lg transition relative">
-          🔔
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-        </button>
+        <Button variant="ghost" size="icon" className="relative">
+          <Bell className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+          <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+        </Button>
 
         {/* User Menu */}
-        <div className="relative">
-          <button
-            onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition"
-          >
-            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
-              {user?.username?.[0]?.toUpperCase() || 'A'}
-            </div>
-            <span className="text-sm font-medium text-gray-700 hidden sm:inline">
-              {user?.username || 'Admin'}
-            </span>
-            <span className="text-gray-400">▼</span>
-          </button>
-
-          {/* Dropdown Menu */}
-          {showUserMenu && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-              <div className="p-4 border-b border-gray-200">
-                <p className="text-sm font-medium text-gray-800">{user?.username}</p>
-                <p className="text-xs text-gray-500">{user?.role}</p>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+              <Avatar className="h-10 w-10 border border-slate-200 dark:border-slate-700">
+                <AvatarImage src={`https://ui.shadcn.com/avatars/01.png`} alt={user?.username} />
+                <AvatarFallback className="bg-blue-600 text-white font-bold">
+                  {user?.username?.[0]?.toUpperCase() || 'U'}
+                </AvatarFallback>
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56" align="end" forceMount>
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">{user?.username}</p>
+                <p className="text-xs leading-none text-muted-foreground">
+                  {user?.email || user?.role}
+                </p>
               </div>
-
-              <div className="p-2">
-                <Link href="/admin/users" className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition flex items-center gap-2">
-                  👤 Profil
-                </Link>
-                <Link href="/admin/settings" className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition flex items-center gap-2">
-                  ⚙️ Ayarlar
-                </Link>
-              </div>
-
-              <div className="p-2 border-t border-gray-200">
-                <div
-                  onClick={(e) => handleLogout(e as any)}
-                  className="cursor-pointer w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded transition flex items-center gap-2"
-                >
-                  🚪 Çıkış Yap
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/admin/users" className="cursor-pointer">
+                <User className="mr-2 h-4 w-4" />
+                <span>Profil</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/admin/settings" className="cursor-pointer">
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Ayarlar</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600 cursor-pointer">
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Çıkış Yap</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );

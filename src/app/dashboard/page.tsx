@@ -3,8 +3,25 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Sidebar from '../components/Sidebar';
-import Header from '../components/Header';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/src/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/src/components/ui/table';
+import { Badge } from '@/src/components/ui/badge';
+import { Button } from '@/src/components/ui/button';
+import { Skeleton } from '@/src/components/ui/skeleton';
+import { Users, Monitor, Wallet, Activity, ArrowRight, ShieldCheck, Terminal, Crown } from 'lucide-react';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -47,118 +64,192 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, []);
 
+  const StatCard = ({ title, value, icon: Icon, colorClass }: any) => (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">
+          {title}
+        </CardTitle>
+        <Icon className={`h-4 w-4 text-muted-foreground ${colorClass}`} />
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <Skeleton className="h-8 w-20" />
+        ) : (
+          <div className="text-2xl font-bold">{value}</div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
-        <p className="text-gray-600 mt-1">Hoş geldiniz!</p>
+        <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+        <p className="text-muted-foreground">
+          Platform durumuna genel bakış ve hızlı işlemler.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
-          <p className="text-gray-600 text-sm font-medium">Toplam Clientler</p>
-          <p className="text-3xl font-bold text-gray-800 mt-2">
-            {loading ? '...' : stats.totalClients}
-          </p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
-          <p className="text-gray-600 text-sm font-medium">Aktif Clientler</p>
-          <p className="text-3xl font-bold text-gray-800 mt-2">
-            {loading ? '...' : stats.activeClients}
-          </p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
-          <p className="text-gray-600 text-sm font-medium">Toplam Bakiye</p>
-          <p className="text-3xl font-bold text-gray-800 mt-2">
-            {loading ? '...' : `$${stats.totalBalance.toLocaleString()}`}
-          </p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-orange-500">
-          <p className="text-gray-600 text-sm font-medium">Açık Pozisyonlar</p>
-          <p className="text-3xl font-bold text-gray-800 mt-2">
-            {loading ? '...' : stats.totalPositions}
-          </p>
-        </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard 
+          title="Toplam Clientler" 
+          value={stats.totalClients} 
+          icon={Users} 
+          colorClass="text-blue-500"
+        />
+        <StatCard 
+          title="Aktif Clientler" 
+          value={stats.activeClients} 
+          icon={Activity} 
+          colorClass="text-green-500"
+        />
+        <StatCard 
+          title="Toplam Bakiye" 
+          value={`$${stats.totalBalance.toLocaleString()}`} 
+          icon={Wallet} 
+          colorClass="text-purple-500"
+        />
+        <StatCard 
+          title="Açık Pozisyonlar" 
+          value={stats.totalPositions} 
+          icon={Monitor} 
+          colorClass="text-orange-500"
+        />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-lg shadow overflow-hidden">
-          <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-            <h2 className="text-xl font-bold text-gray-800">Son Aktif Clientler</h2>
-            <Link href="/admin/clients" className="text-blue-600 hover:underline text-sm font-medium">Tümünü Gör</Link>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-gray-50 text-gray-600 text-xs uppercase font-bold">
-                <tr>
-                  <th className="px-6 py-3">Hesap</th>
-                  <th className="px-6 py-3">Bakiye</th>
-                  <th className="px-6 py-3">Durum</th>
-                  <th className="px-6 py-3">Son Görülme</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-4">
+          <CardHeader>
+            <CardTitle>Son Aktif Clientler</CardTitle>
+            <CardDescription>
+              Platformda işlem gören son client hesapları.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[100px]">Hesap</TableHead>
+                  <TableHead>Bakiye</TableHead>
+                  <TableHead>Durum</TableHead>
+                  <TableHead className="text-right">Son Görülme</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {loading ? (
-                  <tr><td colSpan={4} className="px-6 py-4 text-center text-gray-500">Yükleniyor...</td></tr>
+                  Array(5).fill(0).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
+                      <TableCell className="text-right"><Skeleton className="h-4 w-[120px] ml-auto" /></TableCell>
+                    </TableRow>
+                  ))
                 ) : stats.recentClients.length === 0 ? (
-                  <tr><td colSpan={4} className="px-6 py-4 text-center text-gray-500">Kayıt bulunamadı.</td></tr>
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground h-24">
+                      Kayıt bulunamadı.
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   stats.recentClients.map((client) => (
-                    <tr key={client.id} className="hover:bg-gray-50 transition">
-                      <td className="px-6 py-4">
-                        <div className="font-bold text-gray-800">{client.account_name}</div>
-                        <div className="text-xs text-gray-500">#{client.account_number}</div>
-                      </td>
-                      <td className="px-6 py-4 font-medium text-gray-700">
-                        ${Number(client.balance).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
-                          client.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                        }`}>
+                    <TableRow key={client.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex flex-col">
+                          <span>{client.account_name}</span>
+                          <span className="text-xs text-muted-foreground">#{client.account_number}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>${Number(client.balance).toLocaleString()}</TableCell>
+                      <TableCell>
+                        <Badge variant={client.status === 'active' ? 'default' : 'destructive'}>
                           {client.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-xs text-gray-500">
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right text-xs text-muted-foreground">
                         {client.last_seen ? new Date(client.last_seen).toLocaleString('tr-TR') : '-'}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))
                 )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              </TableBody>
+            </Table>
+            <div className="mt-4 flex justify-end">
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/admin/clients">
+                  Tümünü Gör <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Hızlı İşlemler</h2>
-          <div className="grid grid-cols-2 gap-4">
+        <Card className="col-span-3">
+          <CardHeader>
+            <CardTitle>Hızlı İşlemler</CardTitle>
+            <CardDescription>
+              Sık kullanılan yönetim araçlarına hızlı erişim.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
             {(user?.role === 'admin') && (
-              <Link href="/admin/users" className="p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition text-center">
-                <span className="text-2xl block mb-1">👥</span>
-                <p className="text-sm font-medium text-gray-800">Kullanıcılar</p>
-              </Link>
+              <Button variant="outline" className="h-20 justify-start space-x-4" asChild>
+                <Link href="/admin/users">
+                  <div className="bg-blue-100 dark:bg-blue-900/20 p-2 rounded-full">
+                    <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="flex flex-col items-start">
+                    <span className="font-bold">Kullanıcılar</span>
+                    <span className="text-xs text-muted-foreground">Kullanıcı yönetimi</span>
+                  </div>
+                </Link>
+              </Button>
             )}
+            
             {(user?.role === 'admin' || user?.role === 'master_owner' || user?.role === 'trader') && (
-              <Link href="/admin/clients" className="p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition text-center">
-                <span className="text-2xl block mb-1">💻</span>
-                <p className="text-sm font-medium text-gray-800">Clientler</p>
-              </Link>
+              <Button variant="outline" className="h-20 justify-start space-x-4" asChild>
+                <Link href="/admin/clients">
+                  <div className="bg-green-100 dark:bg-green-900/20 p-2 rounded-full">
+                    <Monitor className="h-6 w-6 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div className="flex flex-col items-start">
+                    <span className="font-bold">Clientler</span>
+                    <span className="text-xs text-muted-foreground">Hesap listesi ve durumu</span>
+                  </div>
+                </Link>
+              </Button>
             )}
+
             {(user?.role === 'admin' || user?.role === 'master_owner') && (
-              <Link href="/admin/commands" className="p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition text-center">
-                <span className="text-2xl block mb-1">📝</span>
-                <p className="text-sm font-medium text-gray-800">Komutlar</p>
-              </Link>
+              <Button variant="outline" className="h-20 justify-start space-x-4" asChild>
+                <Link href="/admin/commands">
+                  <div className="bg-purple-100 dark:bg-purple-900/20 p-2 rounded-full">
+                    <Terminal className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div className="flex flex-col items-start">
+                    <span className="font-bold">Komutlar</span>
+                    <span className="text-xs text-muted-foreground">Sistem komutları gönder</span>
+                  </div>
+                </Link>
+              </Button>
             )}
+
             {(user?.role === 'admin' || user?.role === 'master_owner' || user?.role === 'trader') && (
-              <Link href="/admin/master-groups" className="p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition text-center">
-                <span className="text-2xl block mb-1">👑</span>
-                <p className="text-sm font-medium text-gray-800">Gruplar</p>
-              </Link>
+              <Button variant="outline" className="h-20 justify-start space-x-4" asChild>
+                <Link href="/admin/master-groups">
+                  <div className="bg-orange-100 dark:bg-orange-900/20 p-2 rounded-full">
+                    <Crown className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+                  </div>
+                  <div className="flex flex-col items-start">
+                    <span className="font-bold">Gruplar</span>
+                    <span className="text-xs text-muted-foreground">Master grup ayarları</span>
+                  </div>
+                </Link>
+              </Button>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

@@ -3,6 +3,12 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/src/components/ui/button';
+import { Input } from '@/src/components/ui/input';
+import { Label } from '@/src/components/ui/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/src/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/src/components/ui/alert';
+import { Loader2, TrendingUp, CheckCircle2 } from 'lucide-react';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -45,7 +51,6 @@ export default function RegisterPage() {
 
       if (res.ok) {
         setSuccess('Kayıt başarılı! Lütfen e-posta adresinizi doğrulayın.');
-        // router.push('/login');
       } else {
         setError(data.error || 'Kayıt sırasında bir hata oluştu.');
       }
@@ -57,109 +62,130 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-2xl overflow-hidden">
-        <div className="p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-800">Kayıt Ol</h1>
-            <p className="text-gray-500 mt-2">CopyPoz V5 dünyasına katılın</p>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-4">
+        <div className="flex flex-col items-center space-y-2 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg">
+            <TrendingUp className="h-6 w-6" />
           </div>
-
-          {error && (
-            <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 text-sm rounded">
-              {error}
-            </div>
-          )}
-
-          {success && (
-            <div className="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 mb-6 text-sm rounded">
-              {success}
-              <div className="mt-2">
-                <Link href="/login" className="font-bold underline">Giriş Yap</Link>
-              </div>
-            </div>
-          )}
-
-          {!success && (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Kullanıcı Adı</label>
-                <input
-                  type="text"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-800"
-                  placeholder="Kullanıcı adınız"
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">E-posta Adresi</label>
-                <input
-                  type="email"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-800"
-                  placeholder="e-posta@adresiniz.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Şifre</label>
-                <input
-                  type="password"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-800"
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Şifre Tekrar</label>
-                <input
-                  type="password"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-800"
-                  placeholder="••••••••"
-                  value={formData.confirmPassword}
-                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Referans Kodu (Opsiyonel)</label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition text-gray-800"
-                  placeholder="Referans kodunuz varsa girin"
-                  value={formData.referral_code}
-                  onChange={(e) => setFormData({ ...formData, referral_code: e.target.value })}
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className={`w-full py-3 rounded-lg font-bold text-white transition shadow-lg ${
-                  loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700 active:transform active:scale-95'
-                }`}
-              >
-                {loading ? 'Kayıt Yapılıyor...' : 'Hesap Oluştur'}
-              </button>
-            </form>
-          )}
-
-          <div className="mt-8 text-center text-sm text-gray-500">
-            Zaten hesabınız var mı?{' '}
-            <Link href="/login" className="text-blue-600 font-bold hover:underline">
-              Giriş Yap
-            </Link>
-          </div>
+          <h1 className="text-3xl font-bold tracking-tighter text-slate-900 dark:text-slate-100">CopyPoz V5</h1>
+          <p className="text-muted-foreground">Yeni hesap oluşturun</p>
         </div>
+
+        <Card className="border-slate-200 dark:border-slate-800 shadow-xl">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold text-center">Kayıt Ol</CardTitle>
+            <CardDescription className="text-center">
+              Finansal özgürlüğe ilk adımı atın
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {success && (
+              <Alert className="border-green-500 text-green-700 bg-green-50 dark:bg-green-900/20 dark:text-green-400">
+                <CheckCircle2 className="h-4 w-4" />
+                <AlertTitle>Başarılı!</AlertTitle>
+                <AlertDescription>
+                  {success}
+                  <div className="mt-2">
+                    <Link href="/login" className="font-bold underline hover:text-green-800 dark:hover:text-green-300">Giriş Yap</Link>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {!success && (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="username">Kullanıcı Adı</Label>
+                  <Input
+                    id="username"
+                    placeholder="Kullanıcı adınız"
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    required
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">E-posta Adresi</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="ornek@email.com"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    required
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Şifre</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      required
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Şifre Tekrar</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      placeholder="••••••••"
+                      value={formData.confirmPassword}
+                      onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                      required
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="referral">Referans Kodu (Opsiyonel)</Label>
+                  <Input
+                    id="referral"
+                    placeholder="Varsa referans kodunuz"
+                    value={formData.referral_code}
+                    onChange={(e) => setFormData({ ...formData, referral_code: e.target.value })}
+                    disabled={loading}
+                  />
+                </div>
+
+                <Button type="submit" className="w-full font-bold" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Kayıt Yapılıyor...
+                    </>
+                  ) : (
+                    'Hesap Oluştur'
+                  )}
+                </Button>
+              </form>
+            )}
+          </CardContent>
+          <CardFooter className="flex justify-center text-sm text-muted-foreground">
+            <div>
+              Zaten hesabınız var mı?{' '}
+              <Link href="/login" className="text-primary font-bold hover:underline">
+                Giriş Yap
+              </Link>
+            </div>
+          </CardFooter>
+        </Card>
       </div>
     </div>
   );

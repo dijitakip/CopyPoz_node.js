@@ -3,6 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Button } from '@/src/components/ui/button';
+import { Input } from '@/src/components/ui/input';
+import { Label } from '@/src/components/ui/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/src/components/ui/card';
+import { Alert, AlertDescription } from '@/src/components/ui/alert';
+import { Checkbox } from '@/src/components/ui/checkbox';
+import { Loader2, TrendingUp } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,6 +33,7 @@ export default function LoginPage() {
       if (!res.ok) {
         const data = await res.json();
         setError(data.error || 'Giriş başarısız');
+        setLoading(false);
         return;
       }
 
@@ -35,127 +43,118 @@ export default function LoginPage() {
       router.push('/dashboard');
     } catch (err) {
       setError('Bir hata oluştu. Lütfen tekrar deneyin.');
-    } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleLogin = () => {
-    alert('Google Login şu an hazırlık aşamasındadır. Devreye almak için GOOGLE_CLIENT_ID tanımlanmalıdır.');
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-full mb-4 shadow-lg">
-            <span className="text-3xl">📈</span>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-4">
+        <div className="flex flex-col items-center space-y-2 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg">
+            <TrendingUp className="h-6 w-6" />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2 drop-shadow-md">CopyPoz V5</h1>
-          <p className="text-blue-100 font-medium">Güvenli Forex Sinyal Kopyalama</p>
+          <h1 className="text-3xl font-bold tracking-tighter text-slate-900 dark:text-slate-100">CopyPoz V5</h1>
+          <p className="text-muted-foreground">Güvenli Forex Sinyal Kopyalama</p>
         </div>
 
-        {/* Login Card */}
-        <div className="bg-white rounded-xl shadow-2xl p-8 border border-white/20">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Hoş Geldiniz</h2>
-
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg animate-pulse">
-              <p className="text-red-700 text-sm font-medium">{error}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleLogin} className="space-y-5">
-            {/* Username */}
-            <div>
-              <label className="block text-sm font-bold text-gray-600 mb-1.5">
-                Kullanıcı Adı veya E-posta
-              </label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="admin"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition text-gray-800"
-                required
-              />
-            </div>
-
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-bold text-gray-600 mb-1.5">
-                Şifre
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition text-gray-800"
-                required
-              />
-            </div>
-
-            {/* Remember Me */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="remember"
-                  className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
+        <Card className="border-slate-200 dark:border-slate-800 shadow-xl">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold text-center">Giriş Yap</CardTitle>
+            <CardDescription className="text-center">
+              Hesabınıza erişmek için bilgilerinizi girin
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="username">Kullanıcı Adı veya E-posta</Label>
+                <Input 
+                  id="username" 
+                  placeholder="admin" 
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required 
+                  disabled={loading}
                 />
-                <label htmlFor="remember" className="ml-2 text-sm text-gray-500 cursor-pointer">
-                  Beni hatırla
-                </label>
               </div>
-              <Link href="#" className="text-sm text-blue-600 hover:underline font-medium">Şifremi Unuttum</Link>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Şifre</Label>
+                  <Link 
+                    href="#" 
+                    className="text-sm font-medium text-primary hover:underline"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    Şifremi unuttum?
+                  </Link>
+                </div>
+                <Input 
+                  id="password" 
+                  type="password" 
+                  placeholder="••••••••" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                />
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Checkbox id="remember" />
+                <Label htmlFor="remember" className="text-sm font-normal cursor-pointer">
+                  Beni hatırla
+                </Label>
+              </div>
+
+              <Button type="submit" className="w-full font-bold" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Giriş yapılıyor...
+                  </>
+                ) : (
+                  'Giriş Yap'
+                )}
+              </Button>
+            </form>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-slate-200 dark:border-slate-700" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white dark:bg-slate-950 px-2 text-muted-foreground">
+                  Veya şununla devam et
+                </span>
+              </div>
             </div>
 
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-lg transition duration-200 shadow-md active:transform active:scale-95"
-            >
-              {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
-            </button>
-          </form>
-
-          {/* Divider */}
-          <div className="relative my-8">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-400">Veya şununla devam et</span>
-            </div>
-          </div>
-
-          {/* Google Login Button */}
-          <button
-            onClick={handleGoogleLogin}
-            className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold py-2.5 px-4 rounded-lg transition duration-200 shadow-sm"
-          >
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-            Google ile Giriş Yap
-          </button>
-
-          {/* Register Link */}
-          <div className="mt-8 text-center border-t border-gray-100 pt-6">
-            <p className="text-sm text-gray-500">
+            <Button variant="outline" className="w-full" onClick={() => alert('Google Login yakında!')} disabled={loading}>
+              <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
+                <path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path>
+              </svg>
+              Google ile Giriş Yap
+            </Button>
+          </CardContent>
+          <CardFooter className="flex flex-col space-y-2 text-center text-sm text-muted-foreground">
+            <div>
               Henüz hesabınız yok mu?{' '}
-              <Link href="/register" className="text-blue-600 font-bold hover:underline">
+              <Link href="/register" className="text-primary font-bold hover:underline">
                 Hemen Kayıt Ol
               </Link>
-            </p>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="text-center mt-8 text-blue-100/60 text-xs">
-          <p>© 2026 CopyPoz V5. Güvenli Sinyal Altyapısı.</p>
-        </div>
+            </div>
+            <div className="text-xs pt-4">
+              © 2026 CopyPoz V5. Güvenli Sinyal Altyapısı.
+            </div>
+          </CardFooter>
+        </Card>
       </div>
     </div>
   );
