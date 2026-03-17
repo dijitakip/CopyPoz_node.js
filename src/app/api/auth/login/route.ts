@@ -41,7 +41,9 @@ export async function POST(request: Request) {
       user: {
         id: authUser.id,
         username: authUser.username,
-        role: authUser.role
+        role: authUser.role,
+        status: authUser.status,
+        email: authUser.email
       }
     });
   } catch (error) {

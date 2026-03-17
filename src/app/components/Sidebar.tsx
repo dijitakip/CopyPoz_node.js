@@ -10,6 +10,7 @@ import {
   Monitor, 
   Share2, 
   Settings, 
+  User,
   Users, 
   Crown, 
   Terminal, 

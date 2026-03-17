@@ -45,14 +45,41 @@ export default function ProfilePage() {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      setFormData(prev => ({
-        ...prev,
-        username: parsedUser.username || '',
-        email: parsedUser.email || '',
-      }));
+      // Fetch latest user data from backend
+      const fetchUserData = async () => {
+        try {
+          const res = await fetch(`/api/users/${parsedUser.id}`);
+          if (res.ok) {
+            const data = await res.json();
+            const updatedUser = data.user;
+            setUser(updatedUser);
+            setFormData(prev => ({
+              ...prev,
+              username: updatedUser.username || '',
+              email: updatedUser.email || '',
+            }));
+            // Update local storage too
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+          } else {
+            // Fallback to local data if fetch fails
+            setUser(parsedUser);
+            setFormData(prev => ({
+              ...prev,
+              username: parsedUser.username || '',
+              email: parsedUser.email || '',
+            }));
+          }
+        } catch (err) {
+          console.error('Failed to fetch user data:', err);
+          setUser(parsedUser);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchUserData();
+    } else {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {

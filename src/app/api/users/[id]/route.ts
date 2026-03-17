@@ -3,6 +3,46 @@ import { prisma } from '@/src/backend/utils/db';
 import { headers } from 'next/headers';
 import { getCurrentUser } from '@/src/backend/utils/auth';
 
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  const currentUser = getCurrentUser();
+  if (!currentUser) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const id = parseInt(params.id);
+    
+    // Sadece admin veya kullanıcının kendisi görebilir
+    if (currentUser.role !== 'admin' && currentUser.id !== id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        role: true,
+        status: true,
+        created_at: true,
+      }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, user });
+  } catch (e) {
+    console.error(e);
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
