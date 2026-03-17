@@ -154,7 +154,7 @@ export default function ClientPositionsPage() {
 
   // Trader rolü için ek kısıtlama: İşlem yapamaz
   // Ancak kendi client'ı ise sync işlemlerini yapabilir
-  const canManage = userRole === 'admin' || userRole === 'master_owner';
+  const canManage = userRole === 'admin' || userRole === 'master_owner' || isOwner;
   const canSync = canManage || (userRole === 'trader' && isOwner);
 
   const handleSort = (field: string) => {
