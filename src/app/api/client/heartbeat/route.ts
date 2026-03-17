@@ -163,7 +163,18 @@ export async function POST(request: Request) {
         });
     }
 
-    // 5. Update Daily Performance Log (Async)
+    // 5. Check Real-Time Equity Protection
+    const riskCheck = await RiskEngine.checkEquityProtection(clientId);
+    if (riskCheck.triggered) {
+        return NextResponse.json({
+            ok: false,
+            error: `Panic triggered: ${riskCheck.reason}`,
+            sync_enabled: false,
+            panic_mode: true
+        });
+    }
+
+    // 6. Update Daily Performance Log (Async)
     RiskEngine.logDailyPerformance(clientId).catch(console.error);
 
     return NextResponse.json({

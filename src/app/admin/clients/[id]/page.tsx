@@ -28,6 +28,7 @@ export default function ClientDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [userRole, setUserRole] = useState<string>('viewer');
+  const [panicLoading, setPanicLoading] = useState(false);
 
   useEffect(() => {
     // Kullanıcı rolünü al
@@ -90,6 +91,39 @@ export default function ClientDetailPage() {
       }
   };
 
+  const handlePanicButton = async () => {
+      if (!confirm('DİKKAT! Bu işlem client için tüm kopyalamayı durduracak ve açık olan tüm pozisyonları kapatması için acil komut gönderecektir. Emin misiniz?')) return;
+
+      setPanicLoading(true);
+      try {
+        const token = localStorage.getItem('master_token') || 'master-local-123';
+        const res = await fetch(`/api/clients/${params.id}`, {
+            method: 'POST',
+            headers: { 
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              action: 'panic',
+              reason: 'Manuel Panik Butonu (Admin/Owner)'
+            })
+        });
+
+        if (res.ok) {
+            alert('Panik komutu başarıyla gönderildi. İşlemler kapatılıyor.');
+            window.location.reload();
+        } else {
+            const err = await res.json();
+            alert('İşlem başarısız: ' + (err.error || 'Bilinmeyen hata'));
+        }
+      } catch (err) {
+          console.error(err);
+          alert('Bir hata oluştu');
+      } finally {
+        setPanicLoading(false);
+      }
+  };
+
   if (loading) return <div className="p-8 text-center">Yükleniyor...</div>;
   if (error) return <div className="p-8 text-center text-red-600">Hata: {error}</div>;
   if (!client) return <div className="p-8 text-center">Client bulunamadı</div>;
@@ -103,24 +137,37 @@ export default function ClientDetailPage() {
             <p className="text-gray-500">ID: {client.id}</p>
         </div>
         <div className="flex gap-2">
+            {(userRole === 'admin' || userRole === 'master_owner' || userRole === 'client') && (
+                <button 
+                    onClick={handlePanicButton}
+                    disabled={panicLoading || client.status !== 'active'}
+                    className={`px-4 py-2 rounded transition font-bold ${
+                      client.status !== 'active' 
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-red-600 hover:bg-red-700 text-white animate-pulse hover:animate-none shadow-lg'
+                    }`}
+                >
+                    {panicLoading ? 'İşleniyor...' : '🚨 PANİK BUTONU (Kapat)'}
+                </button>
+            )}
             <Link 
                 href={`/admin/clients/${params.id}/positions`}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition flex items-center"
             >
                 Pozisyonlar
             </Link>
             <Link 
                 href={`/admin/clients/${params.id}/commands`}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded transition"
+                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded transition flex items-center"
             >
                 Komutlar
             </Link>
             {userRole === 'admin' && (
                 <button 
                     onClick={handleDelete}
-                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition"
+                    className="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded transition flex items-center"
                 >
-                    Client Sil
+                    Sil
                 </button>
             )}
         </div>

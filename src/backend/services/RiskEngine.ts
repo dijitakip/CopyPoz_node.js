@@ -3,6 +3,65 @@ import { Decimal } from '@prisma/client/runtime/library';
 
 export class RiskEngine {
   /**
+   * Check Real-Time Equity Protection (Panic Button Trigger)
+   * Eğer anlık equity, ayarlanan maksimum drawdown (kayıp) limitini aşarsa tüm işlemleri durdur.
+   */
+  static async checkEquityProtection(clientId: number) {
+    const client = await prisma.client.findUnique({
+      where: { id: clientId }
+    });
+
+    if (!client || client.status !== 'active') return { triggered: false };
+
+    // Eğer equity <= 0 ise hesap patlamıştır.
+    if (client.equity.lte(0)) {
+      await this.triggerPanic(clientId, 'Equity reached 0 or below (Margin Call).');
+      return { triggered: true, reason: 'Margin Call' };
+    }
+
+    // Kullanıcının belirlediği bir maksimum DD limiti yoksa %30 varsayalım
+    // Şimdilik schema'da max_drawdown (geçmişi tutan) var ama kullanıcı limiti için hardcode %30 kullanabiliriz 
+    // veya ileride client tablosuna `equity_protection_percent` eklenebilir.
+    const maxAllowedDrawdownPercent = new Decimal(30); 
+
+    // Drawdown Hesaplama: ((Balance - Equity) / Balance) * 100
+    if (client.balance.gt(0) && client.balance.gt(client.equity)) {
+      const currentDrawdown = client.balance.sub(client.equity).div(client.balance).mul(100);
+      
+      if (currentDrawdown.gte(maxAllowedDrawdownPercent)) {
+        await this.triggerPanic(clientId, `Drawdown limit reached: ${currentDrawdown.toFixed(2)}% (Max allowed: ${maxAllowedDrawdownPercent}%)`);
+        return { triggered: true, reason: 'Drawdown Limit Exceeded', currentDrawdown };
+      }
+    }
+
+    return { triggered: false };
+  }
+
+  /**
+   * Trigger Panic Button for a Client
+   * İşlemleri kopyalamayı durdurur ve acil kapatma emri kuyruğa ekler.
+   */
+  static async triggerPanic(clientId: number, reason: string) {
+    // 1. Client statüsünü pasife çek (Kopyalamayı durdur)
+    await prisma.client.update({
+      where: { id: clientId },
+      data: { status: 'inactive' }
+    });
+
+    // 2. Tüm açık pozisyonları kapatmak için kuyruğa acil komut ekle
+    await prisma.commandQueue.create({
+      data: {
+        client_id: clientId,
+        command_type: 'CLOSE_ALL',
+        parameters: { reason, urgency: 'HIGH' },
+        status: 'pending'
+      }
+    });
+
+    console.warn(`[PANIC TRIGGERED] Client ID: ${clientId} - Reason: ${reason}`);
+  }
+
+  /**
    * Calculate risk score and suggest multiplier based on performance history
    */
   static async analyzeClient(clientId: number) {

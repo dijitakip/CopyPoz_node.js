@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/src/backend/utils/db';
 import { headers } from 'next/headers';
+import { RiskEngine } from '@/src/backend/services/RiskEngine';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,3 +70,25 @@ export async function DELETE(
       return NextResponse.json({ error: 'Server error' }, { status: 500 });
     }
   }
+
+// Panic Button Endpoint
+export async function POST(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const id = parseInt(params.id);
+    const body = await request.json();
+    const { action, reason } = body;
+
+    if (action === 'panic') {
+      await RiskEngine.triggerPanic(id, reason || 'Manual Panic Triggered from Dashboard');
+      return NextResponse.json({ success: true, message: 'Panic button triggered successfully' });
+    }
+
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+  } catch (error) {
+    console.error('Failed to execute action:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
