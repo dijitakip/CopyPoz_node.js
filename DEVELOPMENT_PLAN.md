@@ -16,6 +16,17 @@ Mevcut üyelik sisteminiz (Custom JWT + Cookies + Bcrypt) temel işlemler için 
 
 ---
 
+## 🏗️ Sunucu Altyapısı ve Teknoloji Seçimi
+
+Sunucu platformunun desteklediği teknolojilere göre projenin en sağlam şekilde çalışması için aşağıdaki yapılandırma kararlaştırılmıştır:
+
+*   **Runtime**: Node.js **22.x (LTS)** - En güncel ve kararlı sürüm.
+*   **Full-Stack Framework**: **Next.js** - Hem frontend hem backend ihtiyaçlarını tek bir çatı altında karşılayan, platformun doğrudan desteklediği en sağlam çözüm.
+*   **Veritabanı**: **MySQL** - Prisma ORM ile yüksek performanslı veri yönetimi.
+*   **Paket Yöneticisi**: **npm** - Varsayılan ve en stabil seçenek.
+
+---
+
 ## 🚀 Faz 1: Güvenlik ve Risk Motoru (Temel Sağlamlaştırma)
 
 Bu fazda sistemin "para kaybetmesini" önleyecek güvenlik katmanları eklenir.
