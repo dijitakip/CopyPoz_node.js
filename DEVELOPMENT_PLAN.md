@@ -27,6 +27,28 @@ Sunucu platformunun desteklediği teknolojilere göre projenin en sağlam şekil
 
 ---
 
+## 🎨 Faz 0: Modern UI/UX ve Tasarım Sistemi (Shadcn/UI & Tailwind)
+
+Projenin sadece işlevsel değil, aynı zamanda görsel olarak güven veren, modern ve profesyonel bir "Fintech" arayüzüne sahip olması için tasarım sistemi baştan kurgulanacaktır.
+
+**Teknoloji Seçimi:**
+*   **Shadcn/UI**: Hazır, erişilebilir ve son derece şık React bileşenleri (Radix UI tabanlı). "Copy-paste" mantığıyla çalıştığı için tam kontrol sağlar.
+*   **Tailwind CSS**: Hızlı ve tutarlı stil yönetimi.
+*   **Lucide React**: Modern ve hafif ikon seti.
+*   **Recharts**: Finansal verilerin (Equity, Drawdown vb.) görselleştirilmesi için profesyonel grafik kütüphanesi.
+
+**Tasarım Dili (Design Language):**
+*   **Tema**: "Clean Fintech" - Beyaz/Gri ağırlıklı, güven veren mavi (Primary) ve işlem durumları için net Yeşil/Kırmızı/Turuncu renk paleti.
+*   **Tipografi**: Okunabilirliği yüksek, modern sans-serif fontlar (Inter veya Geist).
+*   **Layout**: Mobil uyumlu (Responsive), Sidebar navigasyonlu dashboard yapısı.
+
+**Uygulama Adımları:**
+1.  `shadcn/ui` kurulumu ve temel bileşenlerin (Button, Card, Input, Table, Dialog, Sheet) projeye eklenmesi.
+2.  Mevcut sayfaların (Login, Dashboard, Tables) bu yeni bileşenlerle "Refactor" edilmesi.
+3.  Karanlık Mod (Dark Mode) desteğinin eklenmesi.
+
+---
+
 ## 🚀 Faz 1: Güvenlik ve Risk Motoru (Temel Sağlamlaştırma)
 
 Bu fazda sistemin "para kaybetmesini" önleyecek güvenlik katmanları eklenir.
