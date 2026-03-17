@@ -70,6 +70,7 @@ export async function GET(
         swap: pos.swap ? Number(pos.swap) : 0,
         commission: pos.commission ? Number(pos.commission) : 0,
         slippage: pos.slippage ? Number(pos.slippage) : null,
+        execution_ms: pos.execution_ms ? Number(pos.execution_ms) : null,
     }));
 
     return NextResponse.json({ 
