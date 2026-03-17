@@ -182,7 +182,7 @@ export async function POST(request: Request) {
               });
 
               if (exists) {
-                // Güncelle
+                // Güncelle (Eğer önceden is_closed olduysa ama EA hala gönderiyorsa tekrar aç)
                 await tx.position.update({
                   where: { id: exists.id },
                   data: {
@@ -192,6 +192,8 @@ export async function POST(request: Request) {
                     volume: parseFloat(pos.volume), // Kısmi kapanış için volume güncellenmeli
                     sl: pos.sl ? parseFloat(pos.sl) : null,
                     tp: pos.tp ? parseFloat(pos.tp) : null,
+                    is_closed: false, // Eğer yanlışlıkla kapalı işaretlendiyse tekrar aç
+                    close_time: null
                   }
                 });
               } else {
