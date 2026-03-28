@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/src/backend/utils/db';
-import { headers } from 'next/headers';
+import { auth } from '@/src/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,11 +9,15 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const authHeader = headers().get('authorization');
-  const token = authHeader?.split(' ')[1];
+  const session = await auth();
   
-  if (token !== process.env.MASTER_TOKEN && token !== 'master-local-123') {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const user = session.user as any;
+  if (user.role !== 'admin' && user.role !== 'master_owner') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
   try {
@@ -79,11 +83,15 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const authHeader = headers().get('authorization');
-  const token = authHeader?.split(' ')[1];
+  const session = await auth();
   
-  if (token !== process.env.MASTER_TOKEN && token !== 'master-local-123') {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const user = session.user as any;
+  if (user.role !== 'admin' && user.role !== 'master_owner') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
   try {

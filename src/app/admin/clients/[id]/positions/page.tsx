@@ -31,6 +31,9 @@ export default function ClientPositionsPage() {
   const [status, setStatus] = useState<string>('active');
   const [syncBuy, setSyncBuy] = useState<boolean>(true);
   const [syncSell, setSyncSell] = useState<boolean>(true);
+  const [balance, setBalance] = useState<number>(0);
+  const [equity, setEquity] = useState<number>(0);
+  const [accountType, setAccountType] = useState<string>('standard');
   const [userRole, setUserRole] = useState<string>('viewer');
   
   // Risk & Performance State
@@ -62,6 +65,9 @@ export default function ClientPositionsPage() {
         setStatus(data.status || 'active');
         setSyncBuy(data.sync_buy ?? true);
         setSyncSell(data.sync_sell ?? true);
+        setBalance(data.balance ?? 0);
+        setEquity(data.equity ?? 0);
+        setAccountType(data.account_type ?? 'standard');
         setIsOwner(data.is_owner || false);
         setCountdown(REFRESH_INTERVAL); // Reset timer
       } else {
@@ -171,6 +177,69 @@ export default function ClientPositionsPage() {
     }
   };
 
+  const updateSyncSettings = async (setting: 'status' | 'sync_buy' | 'sync_sell', value: boolean | string) => {
+    try {
+        // Optimistic update
+        if (setting === 'sync_buy') setSyncBuy(value as boolean);
+        if (setting === 'sync_sell') setSyncSell(value as boolean);
+        if (setting === 'status') setStatus(value as string);
+
+        const token = localStorage.getItem('master_token') || 'master-local-123';
+        
+        const body: any = {};
+        if (setting === 'status') body.status = value;
+        if (setting === 'sync_buy') body.sync_buy = value;
+        if (setting === 'sync_sell') body.sync_sell = value;
+        // API PUT için mevcut şifreyi göndermemize gerek yok, admin yetkisiyle güncelliyoruz
+        // Ancak API tarafı currentPassword isteyebilir mi? Admin ise istemez.
+        
+        // Admin API endpointini kullanalım: /api/clients/[id] (User endpoint değil)
+        const res = await fetch(`/api/clients/${params.id}`, {
+            method: 'PUT',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+        });
+
+        if (res.ok) {
+            // Başarılı, ayrıca EA'ya açık komut gönder (Command Queue)
+            // Böylece EA heartbeat ayarlarını okumasa bile komut kuyruğundan emri alır.
+            let commandStr = '';
+            if (setting === 'status') commandStr = value === 'active' ? 'RESUME' : 'PAUSE';
+            if (setting === 'sync_buy') commandStr = value ? 'RESUME_BUY' : 'PAUSE_BUY';
+            if (setting === 'sync_sell') commandStr = value ? 'RESUME_SELL' : 'PAUSE_SELL';
+            
+            if (commandStr) {
+                // Hata olsa bile devam et (Silent fail)
+                fetch(`/api/client/command`, {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        client_id: params.id, 
+                        command: commandStr 
+                    })
+                }).catch(console.error);
+            }
+
+            // Verileri yenile (sunucudan teyit et)
+            setTimeout(fetchPositions, 500);
+        } else {
+            const err = await res.json();
+            alert('Güncelleme başarısız: ' + (err.error || 'Bilinmeyen hata'));
+            fetchPositions(); // Revert changes
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Bir hata oluştu');
+        fetchPositions(); // Revert changes
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto p-4">
       {/* Üst Bilgi ve Başlık */}
@@ -181,9 +250,34 @@ export default function ClientPositionsPage() {
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Açık Pozisyonlar</h1>
                 {lastSeen && (
                     <p className="text-xs text-gray-500 mt-1">
-                        Client'dan Son Güncelleme: <span className="font-semibold">{new Date(lastSeen).toLocaleString('tr-TR')}</span>
+                        Client&apos;tan Son Güncelleme: <span className="font-semibold">{new Date(lastSeen).toLocaleString('tr-TR')}</span>
                     </p>
                 )}
+                
+                <div className="flex flex-wrap gap-4 mt-2">
+                    <div className="bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm flex flex-col min-w-[140px]">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Bakiye</span>
+                        <div className="flex items-baseline gap-1.5">
+                            <span className="font-bold text-gray-800 text-xl">
+                                {accountType === 'cent' ? `${balance.toLocaleString()} USC` : `$${balance.toLocaleString()}`}
+                            </span>
+                            {accountType === 'cent' && (
+                                <span className="text-xs text-gray-500 font-medium">(${ (balance/100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })</span>
+                            )}
+                        </div>
+                    </div>
+                    <div className="bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm flex flex-col min-w-[140px]">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Equity</span>
+                        <div className="flex items-baseline gap-1.5">
+                            <span className="font-bold text-gray-800 text-xl">
+                                {accountType === 'cent' ? `${equity.toLocaleString()} USC` : `$${equity.toLocaleString()}`}
+                            </span>
+                            {accountType === 'cent' && (
+                                <span className="text-xs text-gray-500 font-medium">(${ (equity/100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })</span>
+                            )}
+                        </div>
+                    </div>
+                </div>
             </div>
             <div className="flex items-center gap-2 self-end md:self-auto">
                 <div className="flex flex-col items-end mr-2">
@@ -320,34 +414,38 @@ export default function ClientPositionsPage() {
             <div className="bg-white p-2 rounded-lg shadow-sm flex flex-col justify-center gap-2">
                 {canSync ? (
                     <div className="flex gap-2">
-                        <ClosePositionButton
-                            key={`status-${status}`}
-                            clientId={params.id as string}
-                            command={status === 'active' ? 'PAUSE' : 'RESUME'}
-                            label={status === 'active' ? 'Duraklat' : 'Başlat'}
-                            confirmMessage={`Senkronizasyonu ${status === 'active' ? 'duraklatmak' : 'başlatmak'} istediğinize emin misiniz?`}
+                        <button
+                            onClick={() => {
+                                const newStatus = status === 'active' ? 'paused' : 'active';
+                                if(confirm(`Senkronizasyonu ${status === 'active' ? 'duraklatmak' : 'başlatmak'} istediğinize emin misiniz?`)) {
+                                    updateSyncSettings('status', newStatus);
+                                }
+                            }}
                             className={`flex-1 py-1 rounded text-[10px] font-bold transition shadow-sm ${status === 'active' ? 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-100' : 'bg-green-100 text-green-700 hover:bg-green-600 hover:text-white'}`}
-                            onSuccess={fetchPositions}
-                        />
+                        >
+                            {status === 'active' ? 'Duraklat' : 'Başlat'}
+                        </button>
                         <div className="flex flex-col gap-1 flex-1">
-                            <ClosePositionButton
-                                key={`buy-${syncBuy}`}
-                                clientId={params.id as string}
-                                command={syncBuy ? 'PAUSE_BUY' : 'RESUME_BUY'}
-                                label={syncBuy ? 'BUY Durdur' : 'BUY Başlat'}
-                                confirmMessage={`BUY senkronizasyonunu ${syncBuy ? 'durdurmak' : 'başlatmak'} istediğinize emin misiniz?`}
-                                className={`w-full py-0.5 rounded text-[9px] font-bold transition ${syncBuy ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}
-                                onSuccess={fetchPositions}
-                            />
-                            <ClosePositionButton
-                                key={`sell-${syncSell}`}
-                                clientId={params.id as string}
-                                command={syncSell ? 'PAUSE_SELL' : 'RESUME_SELL'}
-                                label={syncSell ? 'SELL Durdur' : 'SELL Başlat'}
-                                confirmMessage={`SELL senkronizasyonunu ${syncSell ? 'durdurmak' : 'başlatmak'} istediğinize emin misiniz?`}
-                                className={`w-full py-0.5 rounded text-[9px] font-bold transition ${syncSell ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}
-                                onSuccess={fetchPositions}
-                            />
+                            <button
+                                onClick={() => {
+                                    if(confirm(`BUY senkronizasyonunu ${syncBuy ? 'durdurmak' : 'başlatmak'} istediğinize emin misiniz?`)) {
+                                        updateSyncSettings('sync_buy', !syncBuy);
+                                    }
+                                }}
+                                className={`w-full py-0.5 rounded text-[9px] font-bold transition ${syncBuy ? 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white' : 'bg-green-50 text-green-600 hover:bg-green-600 hover:text-white'}`}
+                            >
+                                {syncBuy ? 'BUY Durdur' : 'BUY Başlat'}
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if(confirm(`SELL senkronizasyonunu ${syncSell ? 'durdurmak' : 'başlatmak'} istediğinize emin misiniz?`)) {
+                                        updateSyncSettings('sync_sell', !syncSell);
+                                    }
+                                }}
+                                className={`w-full py-0.5 rounded text-[9px] font-bold transition ${syncSell ? 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white' : 'bg-green-50 text-green-600 hover:bg-green-600 hover:text-white'}`}
+                            >
+                                {syncSell ? 'SELL Durdur' : 'SELL Başlat'}
+                            </button>
                         </div>
                     </div>
                 ) : (
@@ -412,12 +510,12 @@ export default function ClientPositionsPage() {
                       {pos.master_ticket ? (
                         <div className="flex flex-col gap-0.5">
                           <span className="text-gray-500">Master: #{pos.master_ticket}</span>
-                          {pos.execution_ms !== null && (
+                          {pos.execution_ms !== undefined && pos.execution_ms !== null && (
                             <span className={pos.execution_ms > 1000 ? 'text-red-500 font-bold' : 'text-green-600'}>
                               ⏱️ {pos.execution_ms} ms
                             </span>
                           )}
-                          {pos.slippage !== null && (
+                          {pos.slippage !== undefined && pos.slippage !== null && (
                             <span className={Math.abs(pos.slippage) > 3 ? 'text-red-500 font-bold' : 'text-blue-600'}>
                               📉 {pos.slippage > 0 ? '+' : ''}{pos.slippage.toFixed(1)} pip
                             </span>

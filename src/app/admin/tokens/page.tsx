@@ -210,7 +210,7 @@ export default function TokensPage() {
                   </div>
                 </div>
                 <p className="text-sm text-gray-500">
-                  Bu token'ı güvenli bir yere kaydedin. Pencereyi kapattıktan sonra tekrar göremeyebilirsiniz.
+                  Bu token&apos;ı güvenli bir yere kaydedin. Pencereyi kapattıktan sonra tekrar göremeyebilirsiniz.
                 </p>
                 <div className="flex gap-3">
                   <button

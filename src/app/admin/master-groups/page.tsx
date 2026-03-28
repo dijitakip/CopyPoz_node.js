@@ -19,6 +19,8 @@ export default function MasterGroupsPage() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    total_commission_rate: '40',
+    admin_commission_rate: '50'
   });
 
   // Filtering and Sorting States
@@ -40,10 +42,7 @@ export default function MasterGroupsPage() {
 
   const fetchGroups = async () => {
     try {
-      const token = localStorage.getItem('master_token') || 'master-local-123';
-      const res = await fetch('/api/master-groups', {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
+      const res = await fetch('/api/master-groups');
 
       if (res.ok) {
         const data = await res.json();
@@ -59,21 +58,21 @@ export default function MasterGroupsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('master_token') || 'master-local-123';
       const res = await fetch('/api/master-groups', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           ...formData,
           created_by: user?.id || 1,
+          total_commission_rate: parseFloat(formData.total_commission_rate) || 40,
+          admin_commission_rate: parseFloat(formData.admin_commission_rate) || 50
         }),
       });
 
       if (res.ok) {
-        setFormData({ name: '', description: '' });
+        setFormData({ name: '', description: '', total_commission_rate: '40', admin_commission_rate: '50' });
         setShowForm(false);
         fetchGroups();
         alert('Master Grubu başarıyla oluşturuldu');
@@ -124,6 +123,33 @@ export default function MasterGroupsPage() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition"
                 rows={3}
               />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-500 uppercase px-1">Toplam Komisyon Oranı (%)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                placeholder="Örn: 40"
+                value={formData.total_commission_rate}
+                onChange={(e) => setFormData({ ...formData, total_commission_rate: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-500 uppercase px-1">Admin Payı Oranı (%)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                placeholder="Örn: 50"
+                value={formData.admin_commission_rate}
+                onChange={(e) => setFormData({ ...formData, admin_commission_rate: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition"
+              />
+              <p className="text-[10px] text-gray-500 px-1">Toplam kesilen komisyonun yüzde kaçı sisteme kalacak.</p>
             </div>
             <button
               type="submit"

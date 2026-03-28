@@ -29,7 +29,10 @@ import {
   ShieldAlert
 } from 'lucide-react';
 
+import { useSession } from "next-auth/react"
+
 export default function ProfilePage() {
+  const { data: session, status } = useSession()
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -67,45 +70,39 @@ export default function ProfilePage() {
   const passwordStrength = validatePassword(formData.newPassword);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      // Fetch latest user data from backend
-      const fetchUserData = async () => {
-        try {
-          const res = await fetch(`/api/users/${parsedUser.id}`);
-          if (res.ok) {
-            const data = await res.json();
-            const updatedUser = data.user;
-            setUser(updatedUser);
-            setFormData(prev => ({
-              ...prev,
-              username: updatedUser.username || '',
-              email: updatedUser.email || '',
-            }));
-            // Update local storage too
-            localStorage.setItem('user', JSON.stringify(updatedUser));
-          } else {
-            // Fallback to local data if fetch fails
-            setUser(parsedUser);
-            setFormData(prev => ({
-              ...prev,
-              username: parsedUser.username || '',
-              email: parsedUser.email || '',
-            }));
-          }
-        } catch (err) {
-          console.error('Failed to fetch user data:', err);
-          setUser(parsedUser);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchUserData();
-    } else {
-      setLoading(false);
+    if (status === "authenticated" && session?.user) {
+        // Oturum varsa, veriyi session'dan veya API'den al
+        // Session'da tüm veriler olmayabilir (örn: created_at), bu yüzden API'den çekmek mantıklı
+        const fetchUserData = async () => {
+            try {
+                // Not: Session user id string, ama API integer bekliyorsa dönüşüm gerekebilir
+                // Ancak NextAuth id'yi string olarak döndürür. API rotamızı da buna göre ayarlayacağız.
+                const userId = session?.user?.id; 
+                if (userId) {
+                    const res = await fetch(`/api/users/${userId}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        const updatedUser = data.user;
+                        setUser(updatedUser);
+                        setFormData(prev => ({
+                            ...prev,
+                            username: updatedUser.username || '',
+                            email: updatedUser.email || '',
+                        }));
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to fetch user data:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchUserData();
+    } else if (status === "unauthenticated") {
+        // Middleware zaten koruyor ama client-side'da da redirect yapılabilir
+        setLoading(false);
     }
-  }, []);
+  }, [status, session]);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();

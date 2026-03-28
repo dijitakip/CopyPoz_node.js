@@ -29,10 +29,7 @@ export default function MasterGroupDetailPage({ params }: { params: { id: string
 
   const fetchGroup = async () => {
     try {
-      const token = localStorage.getItem('master_token') || 'master-local-123';
-      const res = await fetch(`/api/master-groups/${params.id}`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
+      const res = await fetch(`/api/master-groups/${params.id}`);
       if (res.ok) {
         const data = await res.json();
         setGroup(data.group);
@@ -49,10 +46,7 @@ export default function MasterGroupDetailPage({ params }: { params: { id: string
 
   const fetchClients = async () => {
     try {
-      const token = localStorage.getItem('master_token') || 'master-local-123';
-      const res = await fetch('/api/clients', {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
+      const res = await fetch('/api/clients');
       if (res.ok) {
         const data = await res.json();
         setClients(data.clients || []);
@@ -65,16 +59,15 @@ export default function MasterGroupDetailPage({ params }: { params: { id: string
   useEffect(() => {
     fetchGroup();
     fetchClients();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleAddClient = async () => {
     if (!selectedClient) return;
     try {
-      const token = localStorage.getItem('master_token') || 'master-local-123';
       const res = await fetch(`/api/master-groups/${params.id}/clients`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ client_id: parseInt(selectedClient) }),
@@ -96,10 +89,8 @@ export default function MasterGroupDetailPage({ params }: { params: { id: string
   const handleRemoveClient = async (assignmentId: number) => {
     if (!confirm('Bu clientı gruptan çıkarmak istediğinize emin misiniz?')) return;
     try {
-      const token = localStorage.getItem('master_token') || 'master-local-123';
       const res = await fetch(`/api/master-groups/${params.id}/clients?assignment_id=${assignmentId}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` },
       });
 
       if (res.ok) {

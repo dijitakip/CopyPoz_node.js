@@ -4,7 +4,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-change-in-productio
 
 export function generateClientToken(payload: object, expiresIn: string | number = '365d'): string {
   // Token expires in 1 year by default for clients as they need long-lived connections
-  return jwt.sign(payload, JWT_SECRET, { expiresIn });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: expiresIn as any });
 }
 
 export function verifyClientToken(token: string): any {

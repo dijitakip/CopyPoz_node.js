@@ -85,6 +85,7 @@ export default function UserDetailPage() {
 
   useEffect(() => {
     fetchUserAndTokens();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
 
   const handleCreateToken = async (e: React.FormEvent) => {

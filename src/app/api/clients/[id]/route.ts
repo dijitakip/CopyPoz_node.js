@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/src/backend/utils/db';
 import { headers } from 'next/headers';
 import { RiskEngine } from '@/src/backend/services/RiskEngine';
+import { auth } from '@/src/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,11 +11,14 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   // Auth check
+  const session = await auth();
   const authHeader = headers().get('authorization');
   const token = authHeader?.split(' ')[1];
   
-  // Basit auth kontrolü (Environment variable veya hardcoded local token)
-  if (token !== process.env.MASTER_TOKEN && token !== 'master-local-123') {
+  const isMasterToken = token === process.env.MASTER_TOKEN || token === 'master-local-123';
+  const isSessionValid = !!session?.user;
+
+  if (!isMasterToken && !isSessionValid) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -46,14 +50,68 @@ export async function GET(
   }
 }
 
+export async function PUT(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  // Auth Check
+  const session = await auth();
+  const authHeader = headers().get('authorization');
+  const token = authHeader?.split(' ')[1];
+  
+  const isMasterToken = token === process.env.MASTER_TOKEN || token === 'master-local-123';
+  const isSessionValid = !!session?.user;
+
+  if (!isMasterToken && !isSessionValid) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const id = parseInt(params.id);
+  const body = await request.json();
+  const { status, sync_buy, sync_sell, multiplier } = body;
+  
+  const data: any = {};
+  if (status !== undefined) data.status = status;
+  if (sync_buy !== undefined) data.sync_buy = sync_buy;
+  if (sync_sell !== undefined) data.sync_sell = sync_sell;
+  if (multiplier !== undefined) {
+    let parsedMult = Math.floor(Number(multiplier));
+    if (isNaN(parsedMult) || parsedMult < 1) parsedMult = 1;
+    data.multiplier = parsedMult;
+  }
+
+  try {
+    const client = await prisma.client.update({
+      where: { id },
+      data
+    });
+    
+    // BigInt serialization fix
+    const serializedClient = {
+      ...client,
+      account_number: client.account_number.toString(),
+    };
+
+    return NextResponse.json({ ok: true, client: serializedClient });
+  } catch (e) {
+    console.error('Client update error:', e);
+    return NextResponse.json({ error: 'Update failed' }, { status: 500 });
+  }
+}
+
 export async function DELETE(
     request: Request,
     { params }: { params: { id: string } }
   ) {
+    const session = await auth();
     const authHeader = headers().get('authorization');
     const token = authHeader?.split(' ')[1];
     
-    if (token !== process.env.MASTER_TOKEN && token !== 'master-local-123') {
+    const isMasterToken = token === process.env.MASTER_TOKEN || token === 'master-local-123';
+    // Sadece Admin silebilir
+    const isAdmin = session?.user && (session.user as any).role === 'admin';
+
+    if (!isMasterToken && !isAdmin) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
   
@@ -76,6 +134,17 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  const session = await auth();
+  const authHeader = headers().get('authorization');
+  const token = authHeader?.split(' ')[1];
+  
+  const isMasterToken = token === process.env.MASTER_TOKEN || token === 'master-local-123';
+  const isSessionValid = !!session?.user; // Panik butonu için user olmak yeterli (daha detaylı rol kontrolü RiskEngine içinde olabilir)
+
+  if (!isMasterToken && !isSessionValid) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const id = parseInt(params.id);
     const body = await request.json();

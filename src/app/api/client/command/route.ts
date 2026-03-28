@@ -3,15 +3,16 @@ import { prisma } from '@/src/backend/utils/db';
 import { headers } from 'next/headers';
 import { NextRequest } from 'next/server';
 import { logAction } from '@/src/backend/utils/logger';
-import { getCurrentUser, isTrader } from '@/src/backend/utils/auth';
+import { auth } from '@/src/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
+    const session = await auth();
     const authHeader = headers().get('authorization');
     const ip = headers().get('x-forwarded-for') || '127.0.0.1';
-    const user = getCurrentUser();
+    const user = session?.user;
     
     // Authorization Check:
     // 1. Master Token (for EA or System)
@@ -29,7 +30,8 @@ export async function POST(req: Request) {
     const token = searchParams.get('token') || bearer || '';
 
     const isMasterToken = token === process.env.MASTER_TOKEN || token === 'master-local-123';
-    const isAuthorizedTrader = isTrader(user);
+    const userRole = (user as any)?.role;
+    const isAuthorizedTrader = userRole === 'admin' || userRole === 'master_owner' || userRole === 'trader';
 
     if (!isMasterToken && !isAuthorizedTrader) {
       return NextResponse.json({ error: 'Unauthorized. Trader role required.' }, { status: 401 });
@@ -51,7 +53,7 @@ export async function POST(req: Request) {
         }
     });
 
-    await logAction('COMMAND_QUEUED', { client_id, command, params, command_id: cmd.id }, user?.id || null, 'INFO', typeof ip === 'string' ? ip : ip[0]);
+    await logAction('COMMAND_QUEUED', { client_id, command, params, command_id: cmd.id }, user?.id ? Number(user.id) : null, 'INFO', typeof ip === 'string' ? ip : ip[0]);
 
     return NextResponse.json({ ok: true, command: cmd });
   } catch (e) {
@@ -62,6 +64,7 @@ export async function POST(req: Request) {
 
 export async function GET(req: NextRequest) {
   try {
+    const session = await auth();
     const url = new URL(req.url);
     const accountStr = url.searchParams.get('account_number');
     const authHeader = headers().get('authorization');
@@ -75,8 +78,12 @@ export async function GET(req: NextRequest) {
     }
     const token = url.searchParams.get('token') || bearer || '';
 
-    if (!accountStr || !token) {
-      return NextResponse.json({ error: 'Missing account_number or token' }, { status: 400 });
+    if (!accountStr) {
+      return NextResponse.json({ error: 'Missing account_number' }, { status: 400 });
+    }
+
+    if (!token && !session?.user) {
+      return NextResponse.json({ error: 'Missing token' }, { status: 401 });
     }
     
     // BigInt dönüşümü
@@ -91,9 +98,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     }
     
-    // Token kontrolü
+    // Token kontrolü veya Session kontrolü
     const isMasterToken = token === process.env.MASTER_TOKEN || token === 'master-local-123';
-    if (client.auth_token !== token && !isMasterToken) {
+    const isClientToken = client.auth_token === token;
+    const isSessionValid = !!session?.user;
+
+    if (!isClientToken && !isMasterToken && !isSessionValid) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

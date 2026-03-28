@@ -62,8 +62,6 @@ export async function POST(request: Request) {
         password_hash: hashedPassword,
         status: 'inactive', // Email doğrulanana kadar pasif
         role: 'viewer', // Varsayılan rol
-        verification_token: verificationToken,
-        registration_ip: typeof ip === 'string' ? ip : ip[0],
         referral_code: new_referral_code,
         referred_by_id: referred_by_id,
       }

@@ -18,13 +18,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Google verileri eksik.' }, { status: 400 });
     }
 
-    // 1. Google ID veya Email ile kullanıcıyı bul
+    // 1. Email ile kullanıcıyı bul (Google_id prisma şemasında yok, o yüzden sadece email ile arıyoruz)
     let user = await prisma.user.findFirst({
       where: {
-        OR: [
-          { google_id: googleId },
-          { email: email }
-        ]
+        email: email
       }
     });
 
@@ -35,22 +32,13 @@ export async function POST(request: Request) {
         data: {
           username,
           email,
-          google_id: googleId,
           password_hash: 'GOOGLE_AUTH_EXTERNAL', // Şifresiz giriş
           status: 'active',
-          email_verified_at: new Date(), // Google zaten doğrulamış kabul ediyoruz
-          registration_ip: typeof ip === 'string' ? ip : ip[0]
         }
       });
       await logAction('GOOGLE_REGISTER', { username, email }, user.id);
     } else {
-      // 3. Mevcut kullanıcı ise Google ID'sini güncelle (eğer yoksa)
-      if (!user.google_id) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { google_id: googleId, email_verified_at: user.email_verified_at || new Date() }
-        });
-      }
+      // 3. Mevcut kullanıcı ise logla
       await logAction('GOOGLE_LOGIN', { username: user.username }, user.id);
     }
 

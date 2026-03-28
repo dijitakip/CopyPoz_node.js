@@ -293,7 +293,10 @@ export default function ClientsPage() {
         <div className="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
           <p className="text-gray-600 text-sm font-medium">Toplam Bakiye</p>
           <p className="text-3xl font-bold text-gray-800 mt-2">
-            ${clients.reduce((sum, c) => sum + Number(c.balance), 0).toLocaleString()}
+            ${clients.reduce((sum, c) => {
+              const balance = Number(c.balance);
+              return sum + (c.account_type === 'cent' ? balance / 100 : balance);
+            }, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
         </div>
       </div>
@@ -357,10 +360,24 @@ export default function ClientsPage() {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">{client.owner?.username || '-'}</td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-800">
-                        ${Number(client.balance).toLocaleString()}
+                        {client.account_type === 'cent' ? (
+                          <div className="flex flex-col">
+                            <span className="text-orange-600">{Number(client.balance).toLocaleString()} USC</span>
+                            <span className="text-[10px] text-gray-400">(${ (Number(client.balance) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })</span>
+                          </div>
+                        ) : (
+                          `$${Number(client.balance).toLocaleString()}`
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
-                        ${Number(client.equity).toLocaleString()}
+                        {client.account_type === 'cent' ? (
+                          <div className="flex flex-col">
+                            <span className="text-orange-600">{Number(client.equity).toLocaleString()} USC</span>
+                            <span className="text-[10px] text-gray-400">(${ (Number(client.equity) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })</span>
+                          </div>
+                        ) : (
+                          `$${Number(client.equity).toLocaleString()}`
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -409,11 +426,21 @@ export default function ClientsPage() {
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-gray-500">Bakiye</p>
-                      <p className="font-semibold text-gray-800">${Number(client.balance).toLocaleString()}</p>
+                      <p className="font-semibold text-gray-800">
+                        {client.account_type === 'cent' 
+                          ? `${Number(client.balance).toLocaleString()} USC ($${(Number(client.balance)/100).toFixed(2)})`
+                          : `$${Number(client.balance).toLocaleString()}`
+                        }
+                      </p>
                     </div>
                     <div>
                       <p className="text-gray-500">Equity</p>
-                      <p className="font-semibold text-gray-800">${Number(client.equity).toLocaleString()}</p>
+                      <p className="font-semibold text-gray-800">
+                        {client.account_type === 'cent' 
+                          ? `${Number(client.equity).toLocaleString()} USC ($${(Number(client.equity)/100).toFixed(2)})`
+                          : `$${Number(client.equity).toLocaleString()}`
+                        }
+                      </p>
                     </div>
                     <div>
                       <p className="text-gray-500">Grup</p>

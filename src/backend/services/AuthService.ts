@@ -59,9 +59,6 @@ export class AuthService {
 
     // 2. Check for Active Status
     if (user.status !== 'active') {
-      if (user.email_verified_at === null) {
-        throw new Error('Lütfen e-posta adresinizi doğrulayın.');
-      }
       return null;
     }
 

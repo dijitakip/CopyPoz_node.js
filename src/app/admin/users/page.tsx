@@ -147,6 +147,7 @@ export default function UsersPage() {
 
   useEffect(() => {
     fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showDeleted]);
 
   const handleSubmit = async (e: React.FormEvent) => {

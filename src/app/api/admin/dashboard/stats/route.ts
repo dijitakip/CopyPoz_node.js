@@ -1,25 +1,36 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/src/backend/utils/db';
-import { getCurrentUser } from '@/src/backend/utils/auth';
+import { auth } from '@/src/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const user = getCurrentUser();
+    const session = await auth();
     
-    if (!user) {
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [totalClients, activeClients, balanceSum, totalPositions, recentClients] = await Promise.all([
+    // Toplam bakiye hesaplaması (Cent hesaplar için /100 düzeltmesi ile)
+    const allClients = await prisma.client.findMany({
+      select: {
+        balance: true,
+        account_type: true
+      }
+    });
+
+    const totalBalance = allClients.reduce((sum, client) => {
+      const balance = Number(client.balance);
+      if (client.account_type === 'cent') {
+        return sum + (balance / 100);
+      }
+      return sum + balance;
+    }, 0);
+
+    const [totalClients, activeClients, totalPositions, recentClients] = await Promise.all([
       prisma.client.count(),
       prisma.client.count({ where: { status: 'active' } }),
-      prisma.client.aggregate({
-        _sum: {
-          balance: true
-        }
-      }),
       prisma.client.aggregate({
         _sum: {
           open_positions: true
@@ -34,7 +45,8 @@ export async function GET() {
           account_name: true,
           status: true,
           balance: true,
-          last_seen: true
+          last_seen: true,
+          account_type: true // Eklendi
         }
       })
     ]);
@@ -79,7 +91,7 @@ export async function GET() {
       stats: {
         totalClients,
         activeClients,
-        totalBalance: Number(balanceSum._sum.balance || 0),
+        totalBalance: totalBalance,
         totalPositions: Number(totalPositions._sum.open_positions || 0),
         recentClients: serializedClients,
         weeklyPerformance

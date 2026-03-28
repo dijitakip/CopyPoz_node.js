@@ -24,33 +24,66 @@ export class CommissionService {
     const group = client.master_assignments[0].group;
     
     // Profit Calculation Logic (Sum of closed trades)
+    // close_time is a DateTime field in Prisma (mapped to Timestamp in DB)
+    const startOfMonth = new Date(`${month}-01T00:00:00Z`);
+    const endOfMonth = new Date(new Date(`${month}-01T00:00:00Z`).setMonth(startOfMonth.getMonth() + 1));
+
     const trades = await prisma.position.findMany({
       where: {
         client_id: clientId,
-        status: 'closed', // Assuming we track closed status
-        open_time: { // Rough month filter
-          gte: new Date(month + '-01'),
-          lt: new Date(new Date(month + '-01').setMonth(new Date(month + '-01').getMonth() + 1))
+        is_closed: true,
+        close_time: {
+          gte: startOfMonth,
+          lt: endOfMonth
         }
       }
     });
 
     const totalProfit = trades.reduce((acc, trade) => acc.add(trade.profit || 0), new Decimal(0));
     
-    // Skip if no profit
-    if (totalProfit.lte(0)) return null;
+    // Skip if no profit. But if profit is 0 or negative, we might still want to record it so user knows they made no profit and thus owe $0.
+    // However, keeping logic simple: If no profit, record as $0 commission to mark the month as "handled".
+    // If we return null, the UI says "0 reports generated". By saving $0, it says "1 report generated" and they can "Close Period" for $0.
+    if (totalProfit.lte(0)) {
+      return prisma.commissionReport.upsert({
+        where: {
+          client_id_month: {
+            client_id: clientId,
+            month: month
+          }
+        },
+        update: {
+          total_profit: totalProfit,
+          commission_amount: 0,
+          owner_amount: 0,
+          system_amount: 0
+        },
+        create: {
+          client_id: clientId,
+          group_id: group.id,
+          month: month,
+          total_profit: totalProfit,
+          commission_amount: 0,
+          owner_amount: 0,
+          system_amount: 0,
+          payment_status: 'unpaid'
+        }
+      });
+    }
     
-    const totalCommissionRate = group.total_commission_rate; // e.g. 40%
-    const ownerShareRate = group.owner_share_rate; // e.g. 10% 
+    const totalCommissionRate = group.total_commission_rate; // e.g. 40% (Toplam kesilecek oran)
+    // Yeni kural: Admin payı grupta belirlenen admin_commission_rate olacak (default %50)
+    const adminShareRate = group.admin_commission_rate || new Decimal(50);
+    const ownerShareRate = group.owner_share_rate; 
     
+    // Toplam komisyon miktarı (Örn: Karın %20'si - Master grubunda belirlenen total_commission_rate kullanılır)
     const commissionAmount = totalProfit.mul(totalCommissionRate).div(100);
-    const ownerAmount = totalProfit.mul(ownerShareRate).div(100);
-    const systemAmount = commissionAmount.sub(ownerAmount);
+    // Sisteme kalacak olan (Admin payı) (Örn: Toplam komisyonun %50'si)
+    const systemAmount = commissionAmount.mul(adminShareRate).div(100);
+    // Kalan Master'a gidecek olan
+    const ownerAmount = commissionAmount.sub(systemAmount);
 
-    // DEDUCT from Client's Token Balance
-    await TokenService.deductCommission(clientId, commissionAmount);
-
-    return (prisma as any).commission_report.upsert({
+    return prisma.commissionReport.upsert({
       where: {
         client_id_month: {
           client_id: clientId,
@@ -80,14 +113,14 @@ export class CommissionService {
    * Approve a commission payment and extend subscription
    */
   static async approvePayment(reportId: number, adminId: number) {
-    const report = await prisma.commission_report.findUnique({
+    const report = await prisma.commissionReport.findUnique({
       where: { id: reportId }
     });
 
     if (!report) throw new Error('Report not found');
 
     return prisma.$transaction([
-      prisma.commission_report.update({
+      prisma.commissionReport.update({
         where: { id: reportId },
         data: {
           payment_status: 'approved',
@@ -98,9 +131,7 @@ export class CommissionService {
       prisma.client.update({
         where: { id: report.client_id },
         data: {
-          subscription_status: 'active',
-          // Extend next billing date by 1 month
-          next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+          subscription_status: 'active'
         }
       })
     ]);

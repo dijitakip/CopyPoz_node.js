@@ -11,6 +11,8 @@ import { Alert, AlertDescription } from '@/src/components/ui/alert';
 import { Checkbox } from '@/src/components/ui/checkbox';
 import { Loader2, TrendingUp } from 'lucide-react';
 
+import { signIn } from "next-auth/react"
+
 export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState('');
@@ -24,25 +26,21 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+      const res = await signIn("credentials", {
+        username,
+        password,
+        redirect: false,
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || 'Giriş başarısız');
+      if (res?.error) {
+        setError("Kullanıcı adı veya şifre hatalı.");
         setLoading(false);
-        return;
+      } else {
+        router.push("/dashboard");
+        router.refresh();
       }
-
-      const data = await res.json();
-      localStorage.setItem('user', JSON.stringify(data.user));
-      
-      router.push('/dashboard');
     } catch (err) {
-      setError('Bir hata oluştu. Lütfen tekrar deneyin.');
+      setError("Bir hata oluştu. Lütfen tekrar deneyin.");
       setLoading(false);
     }
   };

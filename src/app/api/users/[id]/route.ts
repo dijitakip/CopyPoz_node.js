@@ -1,22 +1,24 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/src/backend/utils/db';
-import { headers } from 'next/headers';
-import { getCurrentUser } from '@/src/backend/utils/auth';
+import { auth } from '@/src/auth'; // Auth.js (NextAuth) entegrasyonu
+import bcrypt from 'bcryptjs';
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const currentUser = getCurrentUser();
-  if (!currentUser) {
+  const session = await auth();
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
     const id = parseInt(params.id);
+    const currentUserRole = (session.user as any).role;
+    const currentUserId = parseInt(session.user.id || '0');
     
     // Sadece admin veya kullanıcının kendisi görebilir
-    if (currentUser.role !== 'admin' && currentUser.id !== id) {
+    if (currentUserRole !== 'admin' && currentUserId !== id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -47,8 +49,8 @@ export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const currentUser = getCurrentUser();
-  if (!currentUser) {
+  const session = await auth();
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -57,18 +59,21 @@ export async function PUT(
     const body = await request.json();
     let { username, email, password, currentPassword, role, status } = body;
 
+    const currentUserRole = (session.user as any).role;
+    const currentUserId = parseInt(session.user.id || '0');
+
     const userToUpdate = await prisma.user.findUnique({ where: { id } });
     if (!userToUpdate) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     // Admin değilse, rolünü ve statüsünü değiştiremez
-    if (currentUser.role !== 'admin') {
+    if (currentUserRole !== 'admin') {
       role = undefined;
       status = undefined;
 
       // Admin değilse, sadece kendi bilgilerini güncelleyebilir
-      if (currentUser.id !== id) {
+      if (currentUserId !== id) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
 
@@ -77,17 +82,15 @@ export async function PUT(
         return NextResponse.json({ error: 'Değişiklikleri kaydetmek için mevcut şifrenizi girmelisiniz.' }, { status: 400 });
       }
 
-      const bcrypt = await import('bcryptjs');
       const isMatch = await bcrypt.compare(currentPassword, userToUpdate.password_hash);
       if (!isMatch) {
         return NextResponse.json({ error: 'Mevcut şifreniz hatalı.' }, { status: 400 });
       }
     }
 
-    const data: any = {
-      username,
-      email,
-    };
+    const data: any = {};
+    if (username) data.username = username;
+    if (email) data.email = email;
     
     if (role) data.role = role;
     if (status) {
@@ -99,17 +102,9 @@ export async function PUT(
     }
 
     if (password) {
-      // bcryptjs dinamik import
-      const bcrypt = await import('bcryptjs');
       data.password_hash = await bcrypt.hash(password, 10);
     }
     
-    // Temizleme (undefined alanları sil)
-    // TypeScript: Object.keys returns string[], so we need to type cast or iterate safely
-    Object.keys(data).forEach(key => {
-        if (data[key] === undefined) delete data[key];
-    });
-
     const user = await prisma.user.update({
       where: { id },
       data,
@@ -126,8 +121,10 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const currentUser = getCurrentUser();
-  if (!currentUser || currentUser.role !== 'admin') {
+  const session = await auth();
+  const currentUserRole = (session?.user as any)?.role;
+
+  if (!session?.user || currentUserRole !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

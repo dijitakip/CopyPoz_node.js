@@ -1,0 +1,42 @@
+---
+description: İzin verilen Node/yığın sınırları ve CopyPoz için seçilen teknolojiler
+alwaysApply: true
+---
+
+# Teknoloji sınırı (CopyPoz)
+
+Geliştirme yalnızca aşağıdaki **onaylı listeler** ve bu depo için **sabitlenmiş seçimler** ile yapılır; liste dışı çatı, runtime veya paket yöneticisi eklenmez.
+
+## Node.js
+
+- **Desteklenen sürümler:** 24.x, 22.x, 20.x, 18.x  
+- **Bu proje:** `package.json` → `engines.node` ile **22.x** (değişiklik gerekiyorsa `engines` ve CI aynı anda güncellenir).
+
+## Paket yöneticisi
+
+- **İzinli:** npm (varsayılan), yarn, pnpm  
+- **Bu proje:** **npm** + `package-lock.json`. Yarn/pnpm’e geçiş ancak kilit dosyası ve dokümantasyon güncellemesiyle yapılır; karışık kilit dosyası bırakılmaz.
+
+## Frontend (izinli çerçeveler)
+
+Angular, Astro, Next.js, Nuxt, Parcel, React, Svelte, SvelteKit, Vite, Vue.js  
+
+**Bu depo için seçim:** **Next.js (App Router) + React**. Yeni ekranlar ve bileşenler buna göre yazılır; Angular/Vue/Svelte/Nuxt/Astro frontend olarak eklenmez.
+
+## Backend (izinli çerçeveler)
+
+Astro, Express, Fastify, NestJS, Next.js, Nuxt, SvelteKit  
+
+**Bu depo için seçim:** **Next.js** (`src/app/api/**` Route Handlers, `middleware.ts`, sunucu bileşenleri). Ayrı bir Express/Fastify/Nest süreci veya paralel HTTP sunucusu **tanıtılmaz**; gerekirse yalnızca bu listedeki bir çatıya geçiş ayrı karar ve migrasyonla yapılır.
+
+## Veri ve araçlar (Node ekosistemi)
+
+- Veritabanı erişimi mevcut hattı izler: **Prisma** + SQL şeması. Başka dil/runtime (ör. ayrı Python/Go servisi) eklenmez.
+
+## Yapılmayacaklar
+
+- Liste dışı UI framework veya ikinci bir frontend çatısı eklemek  
+- Next.js dışında ikinci bir backend HTTP sunucusu çalıştırmak (aynı repoda)  
+- `bun`/`deno` gibi paket yöneticisi/runtime ile bu projeyi kilitlemek  
+
+Yeni bağımlılık eklerken: yalnızca **Node üzerinde çalışan**, yukarıdaki çatılarla uyumlu paketler; mümkünse güvenilir bakımcı ve mevcut sürüm aralıklarına uyum.

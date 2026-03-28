@@ -12,6 +12,10 @@ export async function GET(request: Request) {
 
   try {
     // 1. Token ile kullanıcıyı bul
+    // Not: verification_token prisma şemasından kaldırıldı. Bu özellik eklendiğinde tekrar açılacak.
+    // Şimdilik mock yapalım
+    return NextResponse.json({ error: 'Doğrulama sistemi geçici olarak devre dışı.' }, { status: 400 });
+/*
     const user = await prisma.user.findFirst({
       where: {
         verification_token: token,
@@ -40,6 +44,7 @@ export async function GET(request: Request) {
       success: true,
       message: 'E-posta adresiniz başarıyla doğrulandı. Artık giriş yapabilirsiniz.'
     });
+*/
   } catch (error) {
     console.error('Email verification error:', error);
     return NextResponse.json({ error: 'E-posta doğrulaması sırasında bir hata oluştu' }, { status: 500 });

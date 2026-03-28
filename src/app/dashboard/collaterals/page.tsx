@@ -241,7 +241,7 @@ export default function UserCollateralsPage() {
             <div>
               <h4 className="font-bold text-amber-900 text-sm mb-1">Önemli Hatırlatma</h4>
               <p className="text-xs text-amber-800 leading-relaxed font-medium">
-                Client hesaplarınızın aktif kalması için trading bakiyenizin en az <strong>%20'si</strong> kadar teminat jetonuna sahip olmanız gerekir. Yetersiz teminat durumunda kopyalama işlemleri güvenlik amacıyla duraklatılır.
+                Client hesaplarınızın aktif kalması için trading bakiyenizin en az <strong>%20&apos;si</strong> kadar teminat jetonuna sahip olmanız gerekir. Yetersiz teminat durumunda kopyalama işlemleri güvenlik amacıyla duraklatılır.
               </p>
             </div>
           </div>

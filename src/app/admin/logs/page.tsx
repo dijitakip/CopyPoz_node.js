@@ -26,10 +26,6 @@ export default function SystemLogsPage() {
   const [filterLevel, setFilterLevel] = useState('ALL');
   const [filterAction, setFilterAction] = useState('');
 
-  useEffect(() => {
-    fetchLogs();
-  }, [filterLevel, filterAction]);
-
   const fetchLogs = async () => {
     try {
       setLoading(true);
@@ -54,6 +50,11 @@ export default function SystemLogsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterLevel, filterAction]);
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto p-4">

@@ -15,6 +15,7 @@ interface Client {
   open_positions: number;
   status: string;
   account_type: string;
+  multiplier: number;
   created_at: string;
 }
 
@@ -27,6 +28,7 @@ export default function UserClientsPage() {
     server: '',
     password: '',
     account_type: 'standard',
+    multiplier: 1.0,
   });
   const [submitting, setSubmitting] = useState(false);
   const [panicLoading, setPanicLoading] = useState<number | null>(null);
@@ -57,12 +59,30 @@ export default function UserClientsPage() {
       server: client.server || '',
       password: client.password || '',
       account_type: client.account_type || 'standard',
+      multiplier: client.multiplier || 1.0,
     });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editClient || submitting) return;
+
+    let mult = Math.floor(Number(formData.multiplier));
+    if (isNaN(mult) || mult < 1) {
+        alert('Çarpan en az 1 olmalı ve tam sayı olmalıdır.');
+        return;
+    }
+
+    if (formData.account_type === 'cent' && mult > 10) {
+        alert('Cent hesaplar için maksimum çarpan 10 olabilir.');
+        return;
+    }
+
+    if (mult > 1) {
+      if (!confirm(`DİKKAT: Çarpanı 1'in üzerine (${mult}x) çıkarıyorsunuz!\n\nBu işlem yüksek risk içerir. Hesabınızın bakiyesi master hesabın bakiyesinden bağımsız olarak daha yüksek oranda işleme girecektir. Kasaya bölünme (stop-out) riskiniz çok daha yüksektir.\n\nOnaylıyor musunuz?`)) {
+        return;
+      }
+    }
 
     setSubmitting(true);
     try {
@@ -185,6 +205,25 @@ export default function UserClientsPage() {
                 <option value="cent">Cent Hesap</option>
               </select>
             </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Lot Çarpanı (Risk)</label>
+              <input
+                type="number"
+                step="1"
+                min="1"
+                max={formData.account_type === 'cent' ? 10 : undefined}
+                className={`w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none ${Math.floor(formData.multiplier) > 1 ? 'border-red-400 bg-red-50 text-red-900 font-bold' : 'border-gray-300'}`}
+                value={Math.floor(formData.multiplier)}
+                onChange={(e) => setFormData({ ...formData, multiplier: Math.floor(parseFloat(e.target.value)) || 1 })}
+                required
+              />
+              {Math.floor(formData.multiplier) > 1 && (
+                <p className="text-[10px] text-red-600 mt-1 font-semibold">⚠️ Yüksek Risk: Kasa bölünme ihtimali artar!</p>
+              )}
+              {formData.account_type === 'cent' && (
+                <p className="text-[10px] text-gray-500 mt-1">Cent hesaplar için maksimum çarpan 10x olabilir.</p>
+              )}
+            </div>
             <div className="md:col-span-3 flex justify-end gap-3">
               <button
                 type="button"
@@ -219,6 +258,7 @@ export default function UserClientsPage() {
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Bakiye / Equity</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Tür</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Durum</th>
+                  <th className="px-6 py-3 text-center text-sm font-semibold text-gray-700">Çarpan</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">API Token</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">İşlem</th>
                 </tr>
@@ -231,8 +271,19 @@ export default function UserClientsPage() {
                       <div className="text-xs font-mono text-gray-500">#{client.account_number}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm font-bold text-gray-800">${Number(client.balance).toLocaleString()}</div>
-                      <div className="text-xs text-gray-500">Equity: ${Number(client.equity).toLocaleString()}</div>
+                      {client.account_type === 'cent' ? (
+                        <div className="flex flex-col">
+                          <div className="text-sm font-bold text-orange-600">{Number(client.balance).toLocaleString()} USC</div>
+                          <div className="text-[10px] text-gray-400">(${ (Number(client.balance) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })</div>
+                          <div className="text-xs text-orange-600/80 mt-1">Eq: {Number(client.equity).toLocaleString()} USC</div>
+                          <div className="text-[10px] text-gray-400">(${ (Number(client.equity) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })</div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="text-sm font-bold text-gray-800">${Number(client.balance).toLocaleString()}</div>
+                          <div className="text-xs text-gray-500">Equity: ${Number(client.equity).toLocaleString()}</div>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${client.account_type === 'cent' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
@@ -246,6 +297,11 @@ export default function UserClientsPage() {
                         'bg-red-100 text-red-800'
                       }`}>
                         {client.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`px-2 py-1 rounded text-xs font-bold ${client.multiplier > 1 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
+                        {client.multiplier}x
                       </span>
                     </td>
                     <td className="px-6 py-4">

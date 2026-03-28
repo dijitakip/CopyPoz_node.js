@@ -42,7 +42,6 @@ export async function POST(request: Request) {
         id: authUser.id,
         username: authUser.username,
         role: authUser.role,
-        status: authUser.status,
         email: authUser.email
       }
     });

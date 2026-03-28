@@ -1,25 +1,27 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/src/backend/utils/db';
 import { headers } from 'next/headers';
-import { getCurrentUser, isMasterOwner } from '@/src/backend/utils/auth';
 import { logAction } from '@/src/backend/utils/logger';
+import { auth } from '@/src/auth';
 
 export const dynamic = 'force-dynamic';
 
 // GET all master groups
 export async function GET() {
-  const user = getCurrentUser();
+  const session = await auth();
   
-  if (!user) {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const user = session.user as any;
 
   try {
     let where: any = {};
     
     // Admin değilse sadece kendi oluşturduğu grupları görsün
     if (user.role !== 'admin') {
-      where = { created_by: user.id };
+      where = { created_by: Number(user.id) };
     }
 
     const groups = await prisma.masterGroup.findMany({
@@ -53,15 +55,20 @@ export async function GET() {
 
 // POST create master group
 export async function POST(request: Request) {
-  const user = getCurrentUser();
+  const session = await auth();
   
-  if (!isMasterOwner(user)) {
+  if (!session?.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const user = session.user as any;
+  if (user.role !== 'admin' && user.role !== 'master_owner') {
     return NextResponse.json({ error: 'Unauthorized. Master Owner or Admin role required.' }, { status: 401 });
   }
 
   try {
     const body = await request.json();
-    const { name, description, created_by, total_commission_rate, owner_share_rate } = body;
+    const { name, description, created_by, total_commission_rate, admin_commission_rate, owner_share_rate } = body;
 
     if (!name || !created_by) {
       return NextResponse.json({ error: 'Missing name or created_by' }, { status: 400 });
@@ -73,11 +80,12 @@ export async function POST(request: Request) {
         description: description || null,
         created_by: parseInt(created_by),
         total_commission_rate: total_commission_rate || 40.00,
+        admin_commission_rate: admin_commission_rate || 50.00,
         owner_share_rate: owner_share_rate || 10.00,
       },
     });
 
-    await logAction('GROUP_CREATED', { group_id: group.id, name: group.name }, user?.id || null);
+    await logAction('GROUP_CREATED', { group_id: group.id, name: group.name }, Number(user.id));
 
     return NextResponse.json({ ok: true, group });
   } catch (e) {

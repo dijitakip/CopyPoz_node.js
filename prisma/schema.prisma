@@ -152,6 +152,7 @@ model MasterGroup {
   master_client_id      Int?
   owner_share_rate      Decimal                 @default(10.00) @db.Decimal(5, 2)
   total_commission_rate Decimal                 @default(40.00) @db.Decimal(5, 2)
+  admin_commission_rate Decimal                 @default(50.00) @db.Decimal(5, 2) // Admin payı %50
   assignments           MasterGroupAssignment[]
   creator               User                    @relation("GroupCreator", fields: [created_by], references: [id])
   master_client         Client?                 @relation("GroupMaster", fields: [master_client_id], references: [id])
@@ -300,7 +301,7 @@ model CommissionReport {
   commission_amount Decimal  @db.Decimal(15, 2)
   owner_amount      Decimal  @db.Decimal(15, 2)
   system_amount     Decimal  @db.Decimal(15, 2)
-  payment_status    String   @default("unpaid") @db.VarChar(20)
+  payment_status    String   @default("unpaid") @db.VarChar(20) // unpaid, pending_approval, approved
   approved_at       DateTime?
   approved_by_id    Int?
   created_at        DateTime @default(now()) @db.Timestamp(0)

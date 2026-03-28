@@ -10,24 +10,21 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const userRole = (session.user as any).role;
-  if (!['admin', 'master_owner'].includes(userRole)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-  }
-
   try {
-    // 1. Get groups owned by this user
-    const groups = await prisma.masterGroup.findMany({
-      where: userRole === 'admin' ? {} : { created_by: Number(session.user.id) },
+    const userId = Number(session.user.id);
+
+    // Get client IDs owned by the user
+    const userClients = await prisma.client.findMany({
+      where: { owner_id: userId },
       select: { id: true }
     });
+    
+    const clientIds = userClients.map(c => c.id);
 
-    const groupIds = groups.map(g => g.id);
-
-    // 2. Get reports for these groups
+    // Get reports for these clients
     const reports = await prisma.commissionReport.findMany({
       where: {
-        group_id: { in: groupIds }
+        client_id: { in: clientIds }
       },
       include: {
         client: true

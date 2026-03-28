@@ -38,7 +38,17 @@ export async function GET(
 
     const client = await prisma.client.findUnique({
       where: { id: clientId },
-      select: { last_seen: true, status: true, sync_buy: true, sync_sell: true, owner_id: true, assigned_to_user_id: true }
+      select: { 
+        last_seen: true, 
+        status: true, 
+        sync_buy: true, 
+        sync_sell: true, 
+        owner_id: true, 
+        assigned_to_user_id: true,
+        balance: true,
+        equity: true,
+        account_type: true
+      }
     });
 
     const isOwner = user ? (client?.owner_id === user.id || client?.assigned_to_user_id === user.id) : false;
@@ -91,10 +101,13 @@ export async function GET(
         status: client?.status,
         sync_buy: client?.sync_buy,
         sync_sell: client?.sync_sell,
+        balance: Number(client?.balance || 0),
+        equity: Number(client?.equity || 0),
+        account_type: client?.account_type,
         is_owner: isOwner
     });
-  } catch (e) {
+  } catch (e: any) {
     console.error('Error fetching client positions:', e);
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Server error: ' + e.message }, { status: 500 });
   }
 }

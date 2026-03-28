@@ -96,6 +96,7 @@ export function isViewer(user: SessionUser | null): boolean {
 }
 
 import { TokenService } from '../services/TokenService';
+import { prisma } from './db';
 
 export async function isSubscriptionActive(clientId: number): Promise<boolean> {
   const client = await prisma.client.findUnique({
@@ -109,7 +110,7 @@ export async function isSubscriptionActive(clientId: number): Promise<boolean> {
   // Ama heartbeat'in reddedilmesi EA tarafında 403 hatasına neden oluyor.
   // Bu nedenle status='paused' durumunu heartbeat'i bloke edecek bir şey olarak görmemeliyiz.
   // Heartbeat çalışmaya devam etmeli ama 'sync_enabled: false' dönmeli ki EA kopyalama yapmasın.
-  if (client.status === 'suspended') return false;
+  if (client.status === 'disconnected') return false;
 
   // 2. Check for Jeton Collateral (Minimum %20)
   const collateral = await TokenService.checkCollateral(clientId);

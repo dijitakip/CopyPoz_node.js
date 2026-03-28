@@ -102,7 +102,7 @@ export async function POST(request: Request) {
       
       if (is_syncing !== undefined) {
           const newStatus = is_syncing ? 'active' : 'paused';
-          if (client.status !== newStatus) updateData.status = newStatus;
+          if (client && client.status !== newStatus) updateData.status = newStatus;
       }
       if (sync_buy !== undefined) {
           updateData.sync_buy = (sync_buy === true || sync_buy === "true");
@@ -110,10 +110,10 @@ export async function POST(request: Request) {
       if (sync_sell !== undefined) {
           updateData.sync_sell = (sync_sell === true || sync_sell === "true");
       }
-      if (!client.owner_id && ownerId) {
+      if (client && !client.owner_id && ownerId) {
           updateData.owner_id = ownerId;
       }
-      if (client.auth_token !== token && token !== process.env.MASTER_TOKEN && token !== 'master-local-123') {
+      if (client && client.auth_token !== token && token !== process.env.MASTER_TOKEN && token !== 'master-local-123') {
            updateData.auth_token = token;
       }
 
@@ -121,6 +121,10 @@ export async function POST(request: Request) {
         where: { account_number: BigInt(account_number) },
         data: updateData,
       });
+    }
+
+    if (!client) {
+        return NextResponse.json({ error: 'Client sync failed' }, { status: 500 });
     }
 
     const clientId = client.id;
@@ -244,6 +248,9 @@ export async function POST(request: Request) {
       auth_token: client.auth_token,
       multiplier: Number(client.multiplier || 1.0),
       account_type: client.account_type,
+      sync_buy: client.sync_buy,
+      sync_sell: client.sync_sell,
+      status: client.status,
       isNew,
     });
 

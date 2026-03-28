@@ -1,15 +1,21 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/src/backend/utils/db';
 import { headers } from 'next/headers';
+import { auth } from '@/src/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   try {
+    const session = await auth();
     const authHeader = headers().get('authorization');
     const token = authHeader?.split(' ')[1];
 
-    if (token !== process.env.MASTER_TOKEN && token !== 'master-local-123') {
+    // Hem Token (EA için) hem de Session (Admin Paneli için) kontrolü
+    const isTokenValid = token === process.env.MASTER_TOKEN || token === 'master-local-123';
+    const isSessionValid = !!session?.user;
+
+    if (!isTokenValid && !isSessionValid) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

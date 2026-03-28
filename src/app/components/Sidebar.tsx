@@ -49,7 +49,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const isActive = (path: string) => pathname === path;
   const isActiveParent = (paths: string[]) => paths.some(p => pathname.startsWith(p));
 
-  const menuItems = [
+  const menuItems: any[] = [
     {
       label: 'Dashboard',
       icon: LayoutDashboard,
@@ -71,6 +71,11 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
       href: '/dashboard/referrals',
     },
     {
+      label: 'Dönem Raporlarım',
+      icon: Scroll,
+      href: '/dashboard/reports',
+    },
+    {
       label: 'Profilim',
       icon: User,
       href: '/dashboard/profile',
@@ -87,6 +92,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
     submenu.push({ label: 'Clientler', href: '/admin/clients', icon: Monitor });
     submenu.push({ label: 'Master Grupları', href: '/admin/master-groups', icon: Crown });
+    submenu.push({ label: 'Dönem Raporları', href: '/admin/reports', icon: Scroll });
     submenu.push({ label: 'Komutlar', href: '/admin/commands', icon: Terminal });
     submenu.push({ label: 'Tokenlar', href: '/admin/tokens', icon: Key });
     submenu.push({ label: 'Teminatlar', href: '/admin/collaterals', icon: Wallet });
@@ -166,7 +172,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
                     }
                     className={cn(
                       "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-200 group",
-                      isActiveParent(item.submenu.map(s => s.href))
+                      isActiveParent(item.submenu.map((s: any) => s.href))
                         ? "bg-slate-800 text-blue-400 font-medium"
                         : "text-slate-400 hover:bg-slate-800 hover:text-white"
                     )}
@@ -188,7 +194,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
                   {/* Submenu */}
                   {isOpen && expandedMenu === item.label && (
                     <div className="pl-4 space-y-1 mt-1 animate-accordion-down overflow-hidden">
-                      {item.submenu.map((subitem) => (
+                      {item.submenu.map((subitem: any) => (
                         <Link
                           key={subitem.href}
                           href={subitem.href}

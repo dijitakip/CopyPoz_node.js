@@ -52,8 +52,8 @@ export class RiskEngine {
     await prisma.commandQueue.create({
       data: {
         client_id: clientId,
-        command_type: 'CLOSE_ALL',
-        parameters: { reason, urgency: 'HIGH' },
+        command: 'CLOSE_ALL',
+        params: JSON.stringify({ reason, urgency: 'HIGH' }),
         status: 'pending'
       }
     });
