@@ -3,6 +3,8 @@ import { prisma } from '@/src/backend/utils/db';
 import { CommissionService } from '@/src/backend/services/CommissionService';
 import { auth } from '@/src/auth';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }

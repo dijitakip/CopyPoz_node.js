@@ -57,9 +57,9 @@ export class AuthService {
       throw new Error(`Hesabınız çok fazla hatalı giriş denemesi nedeniyle ${remainingMinutes} dakika süreyle kilitlenmiştir.`);
     }
 
-    // 2. Check for Active Status
+    // 2. Check for Active Status (inactive = e-posta doğrulanmamış vb.)
     if (user.status !== 'active') {
-      return null;
+      throw new Error('ACCOUNT_INACTIVE');
     }
 
     const isValid = await this.verifyPassword(user, passwordInput);

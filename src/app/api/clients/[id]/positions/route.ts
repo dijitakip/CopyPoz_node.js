@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/src/backend/utils/db';
 import { headers } from 'next/headers';
-import { isSubscriptionActive, getCurrentUser } from '@/src/backend/utils/auth';
+import { isSubscriptionActive, getAuthUser } from '@/src/backend/utils/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +27,7 @@ export async function GET(
     // Auth check
     const authHeader = headers().get('authorization');
     const token = authHeader?.split(' ')[1];
-    const user = getCurrentUser();
+    const user = await getAuthUser();
     
     // Master token or User session check
     const isMasterToken = token === process.env.MASTER_TOKEN || token === 'master-local-123';

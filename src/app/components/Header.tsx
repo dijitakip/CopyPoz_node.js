@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Button } from '@/src/components/ui/button';
 import {
@@ -14,6 +13,7 @@ import {
 } from '@/src/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/src/components/ui/avatar';
 import { Bell, Menu, LogOut, User, Settings } from 'lucide-react';
+import { signOut } from 'next-auth/react';
 
 interface HeaderProps {
   user: any;
@@ -21,7 +21,6 @@ interface HeaderProps {
 }
 
 export default function Header({ user: propUser, onMenuClick }: HeaderProps) {
-  const router = useRouter();
   const [user, setUser] = useState<any>(propUser);
 
   useEffect(() => {
@@ -41,16 +40,14 @@ export default function Header({ user: propUser, onMenuClick }: HeaderProps) {
   const isMasterOwner = userRole === 'master_owner';
 
   const handleLogout = async () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('master_token');
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
     } catch (e) {
       console.error('Logout API error:', e);
     }
-    
-    localStorage.removeItem('user');
-    localStorage.removeItem('master_token');
-    router.push('/login');
-    router.refresh();
+    await signOut({ callbackUrl: '/login' });
   };
 
   return (

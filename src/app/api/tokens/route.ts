@@ -2,13 +2,13 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/src/backend/utils/db';
 import { headers } from 'next/headers';
 import { generateClientToken } from '@/src/backend/utils/jwt';
-import { getCurrentUser, isMasterOwner } from '@/src/backend/utils/auth';
+import { getAuthUser, isMasterOwner } from '@/src/backend/utils/auth';
 import { logAction } from '@/src/backend/utils/logger';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const user = getCurrentUser();
+  const user = await getAuthUser();
   
   if (!isMasterOwner(user)) {
     return NextResponse.json({ error: 'Unauthorized. Master Owner or Admin role required.' }, { status: 401 });
@@ -30,7 +30,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const user = getCurrentUser();
+  const user = await getAuthUser();
   
   if (!isMasterOwner(user)) {
     return NextResponse.json({ error: 'Unauthorized. Master Owner or Admin role required.' }, { status: 401 });

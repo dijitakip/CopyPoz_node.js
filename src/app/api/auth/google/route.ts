@@ -4,6 +4,8 @@ import { createSession } from '@/src/backend/utils/auth';
 import { logAction } from '@/src/backend/utils/logger';
 import { headers } from 'next/headers';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   try {
     const { idToken, email, name, googleId } = await request.json();

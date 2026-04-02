@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/src/backend/utils/db';
-import { getCurrentUser, isMasterOwner } from '@/src/backend/utils/auth';
+import { getAuthUser, isMasterOwner } from '@/src/backend/utils/auth';
+
+export const dynamic = 'force-dynamic';
 
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const user = getCurrentUser();
+  const user = await getAuthUser();
   if (!isMasterOwner(user)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

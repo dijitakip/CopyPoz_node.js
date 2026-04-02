@@ -1,4 +1,5 @@
 import { cookies, headers } from 'next/headers';
+import { auth as nextAuthSession } from '@/src/auth';
 import { verifyClientToken, generateClientToken } from './jwt';
 
 export interface SessionUser {
@@ -53,6 +54,31 @@ export function getCurrentUser(): SessionUser | null {
   }
 
   return null;
+}
+
+/**
+ * NextAuth (web girişi) + eski session_token / Bearer JWT.
+ * Route handler'larda tercih edin; yalnızca getCurrentUser() NextAuth oturumunu görmez.
+ */
+export async function getAuthUser(): Promise<SessionUser | null> {
+  try {
+    const session = await nextAuthSession();
+    if (session?.user?.id != null) {
+      const u = session.user as {
+        id?: string;
+        name?: string | null;
+        role?: string;
+      };
+      return {
+        id: Number(u.id),
+        username: u.name ?? '',
+        role: u.role ?? 'viewer',
+      };
+    }
+  } catch {
+    // auth() istek dışı bağlamda
+  }
+  return getCurrentUser();
 }
 
 export function createSession(user: SessionUser) {

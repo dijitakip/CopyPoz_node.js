@@ -3,6 +3,8 @@ import { prisma } from '@/src/backend/utils/db';
 import { auth } from '@/src/auth'; // Auth.js (NextAuth) entegrasyonu
 import bcrypt from 'bcryptjs';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }

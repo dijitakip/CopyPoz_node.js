@@ -36,8 +36,9 @@ export default function LoginPage() {
         setError("Kullanıcı adı veya şifre hatalı.");
         setLoading(false);
       } else {
+        await router.refresh();
         router.push("/dashboard");
-        router.refresh();
+        setLoading(false);
       }
     } catch (err) {
       setError("Bir hata oluştu. Lütfen tekrar deneyin.");

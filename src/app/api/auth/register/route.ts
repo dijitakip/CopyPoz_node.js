@@ -5,6 +5,8 @@ import { logAction } from '@/src/backend/utils/logger';
 import { sendVerificationEmail } from '@/src/backend/utils/email';
 import { headers } from 'next/headers';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   try {
     const { username, email, password, referral_code } = await request.json();
@@ -64,6 +66,7 @@ export async function POST(request: Request) {
         role: 'viewer', // Varsayılan rol
         referral_code: new_referral_code,
         referred_by_id: referred_by_id,
+        verification_token: verificationToken,
       }
     });
 

@@ -3,6 +3,8 @@ import { AuthService } from '@/src/backend/services/AuthService';
 import { createSession } from '@/src/backend/utils/auth';
 import { logAction } from '@/src/backend/utils/logger';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   try {
     const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
@@ -20,7 +22,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing credentials' }, { status: 400 });
     }
 
-    const authUser = await AuthService.login(username, password);
+    let authUser;
+    try {
+      authUser = await AuthService.login(username, password);
+    } catch (err) {
+      if (err instanceof Error && err.message === 'ACCOUNT_INACTIVE') {
+        return NextResponse.json(
+          {
+            error: 'Hesabınız henüz aktif değil. Lütfen e-postanızdaki doğrulama bağlantısını kullanın.',
+            code: 'EMAIL_NOT_VERIFIED',
+          },
+          { status: 403 }
+        );
+      }
+      throw err;
+    }
 
     if (!authUser) {
       await logAction('LOGIN_FAILED', { username }, null, 'WARNING', typeof ip === 'string' ? ip : ip[0]);

@@ -2,8 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
+
+function sessionUserToLayoutUser(session: NonNullable<ReturnType<typeof useSession>['data']>) {
+  const u = session.user!;
+  return {
+    id: u.id,
+    username: u.name ?? '',
+    email: u.email ?? '',
+    role: (u as { role?: string }).role ?? 'viewer',
+  };
+}
 
 export default function AdminLayout({
   children,
@@ -11,30 +22,34 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        
-        // Admin yetkisi olmayanları dashboard'a veya login'e at
-         if (parsedUser.role !== 'admin' && parsedUser.role !== 'master_owner' && parsedUser.role !== 'trader') {
-           router.push('/dashboard');
-         }
-      } catch (e) {
-        console.error('Failed to parse user from localStorage');
-        router.push('/login');
-      }
-    } else {
-      router.push('/login');
+    if (status === 'loading') return;
+    if (status === 'unauthenticated') {
+      router.replace('/login');
+      return;
     }
-  }, [router]);
+    if (!session?.user) return;
 
-  if (!user) return null;
+    const layoutUser = sessionUserToLayoutUser(session);
+    const role = layoutUser.role;
+    if (role !== 'admin' && role !== 'master_owner' && role !== 'trader') {
+      router.replace('/dashboard');
+      return;
+    }
+
+    setUser(layoutUser);
+    try {
+      localStorage.setItem('user', JSON.stringify(layoutUser));
+    } catch {
+      /* ignore */
+    }
+  }, [session, status, router]);
+
+  if (status === 'loading' || !user) return null;
 
   return (
     <div className="flex h-screen bg-gray-50">

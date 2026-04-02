@@ -1,6 +1,6 @@
 import { prisma } from './db';
 import { LogLevel } from '@prisma/client';
-import { getCurrentUser } from './auth';
+import { getAuthUser } from './auth';
 
 export async function logAction(
   action: string, 
@@ -14,7 +14,7 @@ export async function logAction(
     let effectiveUserId = userId;
     if (!effectiveUserId) {
       try {
-        const currentUser = getCurrentUser();
+        const currentUser = await getAuthUser();
         if (currentUser) {
           effectiveUserId = currentUser.id;
         }

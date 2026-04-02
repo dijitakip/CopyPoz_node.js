@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/src/backend/utils/db';
 import { headers } from 'next/headers';
 import { generateClientToken } from '@/src/backend/utils/jwt';
-import { getCurrentUser, isAdmin } from '@/src/backend/utils/auth';
+import { getAuthUser, isAdmin } from '@/src/backend/utils/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const currentUser = getCurrentUser();
+  const currentUser = await getAuthUser();
   
   // 1. Bearer Token Check (MT5 EA)
   const authHeader = headers().get('authorization');

@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/src/backend/utils/db';
-import { getCurrentUser } from '@/src/backend/utils/auth';
+import { getAuthUser } from '@/src/backend/utils/auth';
 import { TokenService } from '@/src/backend/services/TokenService';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
-  const currentUser = getCurrentUser();
+  const currentUser = await getAuthUser();
   if (!currentUser || currentUser.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

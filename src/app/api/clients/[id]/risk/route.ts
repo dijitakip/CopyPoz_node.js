@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { RiskEngine } from '@/src/backend/services/RiskEngine';
-import { getCurrentUser, isTrader } from '@/src/backend/utils/auth';
+import { getAuthUser, isTrader } from '@/src/backend/utils/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = getCurrentUser();
+    const user = await getAuthUser();
     if (!isTrader(user)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

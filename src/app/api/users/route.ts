@@ -1,15 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/src/backend/utils/db';
-import { headers } from 'next/headers';
 import * as bcrypt from 'bcryptjs';
-import { getCurrentUser, isAdmin } from '@/src/backend/utils/auth';
+import { getAuthUser, isAdmin } from '@/src/backend/utils/auth';
 import { logAction } from '@/src/backend/utils/logger';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  const user = getCurrentUser();
-  
+  const user = await getAuthUser();
+
   if (!user || user.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized. Admin role required.' }, { status: 401 });
   }
@@ -44,8 +43,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const currentUser = getCurrentUser();
-  
+  const currentUser = await getAuthUser();
+
   if (!isAdmin(currentUser)) {
     return NextResponse.json({ error: 'Unauthorized. Admin role required.' }, { status: 401 });
   }

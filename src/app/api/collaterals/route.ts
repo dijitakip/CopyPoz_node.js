@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/src/backend/utils/db';
-import { getCurrentUser } from '@/src/backend/utils/auth';
+import { getAuthUser } from '@/src/backend/utils/auth';
 import { CommissionService } from '@/src/backend/services/CommissionService';
 import { Decimal } from '@prisma/client/runtime/library';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
-    const currentUser = getCurrentUser();
+    const currentUser = await getAuthUser();
     
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

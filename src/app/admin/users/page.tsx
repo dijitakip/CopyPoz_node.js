@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 interface User {
@@ -15,7 +14,6 @@ interface User {
 }
 
 export default function UsersPage() {
-  const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDeleted, setShowDeleted] = useState(false);
@@ -47,22 +45,7 @@ export default function UsersPage() {
   };
   const [formData, setFormData] = useState(formDataInit);
 
-  // Admin Kontrolü
-  useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        if (user.role !== 'admin') {
-          router.push('/dashboard');
-        }
-      } catch (e) {
-        router.push('/login');
-      }
-    } else {
-      router.push('/login');
-    }
-  }, [router]);
+  // Yetki: admin layout + middleware (NextAuth). localStorage yarışına güvenme.
 
   // Fetch clients for token modal
   const fetchClients = async () => {

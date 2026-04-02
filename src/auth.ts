@@ -27,7 +27,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         if (user.status !== 'active') {
-          throw new Error("Hesabınız aktif değil.")
+          throw new Error(
+            "Hesabınız henüz aktif değil. Kayıt sırasında gönderilen e-postadaki doğrulama bağlantısını kullanın."
+          )
         }
 
         const isValid = await compare(credentials.password as string, user.password_hash)

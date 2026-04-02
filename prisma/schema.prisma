@@ -26,6 +26,8 @@ model User {
   commission_rate       Decimal       @default(10.00) @db.Decimal(5, 2)
   referral_code         String?       @unique @db.VarChar(20)
   referred_by_id        Int?
+  verification_token    String?       @unique @db.VarChar(255)
+  email_verified_at     DateTime?     @db.Timestamp(0)
   assigned_clients      Client[]      @relation("AssignedTo")
   owned_clients         Client[]      @relation("Owner")
   master_groups_created MasterGroup[] @relation("GroupCreator")

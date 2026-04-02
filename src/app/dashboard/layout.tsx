@@ -2,8 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
+
+function sessionUserToLayoutUser(session: NonNullable<ReturnType<typeof useSession>['data']>) {
+  const u = session.user!;
+  return {
+    id: u.id,
+    username: u.name ?? '',
+    email: u.email ?? '',
+    role: (u as { role?: string }).role ?? 'viewer',
+  };
+}
 
 export default function DashboardLayout({
   children,
@@ -11,25 +22,28 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-      } catch (e) {
-        console.error('Failed to parse user from localStorage');
-        router.push('/login');
-      }
-    } else {
-      router.push('/login');
+    if (status === 'loading') return;
+    if (status === 'unauthenticated') {
+      router.replace('/login');
+      return;
     }
-  }, [router]);
+    if (session?.user) {
+      const layoutUser = sessionUserToLayoutUser(session);
+      setUser(layoutUser);
+      try {
+        localStorage.setItem('user', JSON.stringify(layoutUser));
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [session, status, router]);
 
-  if (!user) return null;
+  if (status === 'loading' || !user) return null;
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-900">

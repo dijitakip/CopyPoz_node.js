@@ -31,7 +31,9 @@ export default auth((req) => {
 
   // 2. Korumasız Sayfalar (Login, Public API'ler, Webhooklar)
   if (
-    pathname.startsWith("/login") || 
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/register") ||
+    pathname.startsWith("/verify-email") ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/client") || // Client API'leri (Token tabanlı, session yok)
     pathname === "/" // Landing Page (Opsiyonel)
